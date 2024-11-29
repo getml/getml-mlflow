@@ -57,4 +57,7 @@ exclude_lines = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["getml.mlflow"]
+packages = ["src/getml"]
+
+[tool.hatch.build.targets.hatch_editable]
+sources = ["src"]
