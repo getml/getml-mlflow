@@ -7,7 +7,7 @@ import yaml
 
 import mlflow
 from mlflow import pyfunc, set_tracking_uri, set_experiment, start_run
-from getml_mlflow.autologging import autolog as _autolog
+from autologging import autolog as _autolog
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
