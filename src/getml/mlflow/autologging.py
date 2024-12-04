@@ -241,7 +241,7 @@ def autolog(
                     "Failed to log training dataset information to MLflow Tracking. Reason: %s", e
                 )
         return engine_metrics_to_be_tracked
-
+    
     _patch_pipeline_method(
         flavor_name=flavor_name,
         class_def=getml.pipeline.Pipeline,
