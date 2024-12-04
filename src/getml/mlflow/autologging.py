@@ -82,7 +82,7 @@ def autolog(
                value_name = values.__class__.__name__
                pipeline_informations[parameter_name] = value_name
         tags = [str(t) for t in getml_pipeline.tags]
-        return LogInfo(params=pipeline_informations, tags=dict(zip(tags, tags)))
+        return LogInfo(params=pipeline_informations, tags={"pipeline_tags": tags})
 
     def _extract_fitted_pipeline_informations(getml_pipeline: getml.Pipeline) -> LogInfo:
         params = {
