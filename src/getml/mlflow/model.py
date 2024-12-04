@@ -34,7 +34,7 @@ from mlflow.utils.model_utils import (
     _validate_and_prepare_target_save_path,
 )
 
-from src.getml.mlflow.utils import get_default_pip_requirements, _copy_getml_engine_folders, _load_model
+from getml.mlflow.pyfunc import get_default_pip_requirements, _copy_getml_engine_folders, _load_model
 
 FLAVOR_NAME = "getml"
 
