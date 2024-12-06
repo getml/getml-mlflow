@@ -188,14 +188,18 @@ def autolog(
         return fit_output
 
     def patched_score_method(original, self: getml.Pipeline, *args, **kwargs) -> getml.pipeline.Scores:
-
+        #gm = GetMLWrapper(self)
         target = self.data_model.population.roles.target[0]
         pop_df = args[0].population.to_pandas()
         pop_df["predictions"] = self.predict(*args)
         pop_df['predictions'] = pop_df.round({'predictions': 0})['predictions'].astype(bool)
-        pop_df[target] = pop_df[target].astype(bool)
+        model_type = ["regressor" if self.is_regression else "classifier"][0]
+        if model_type == "classifier":
+            pop_df[target] = pop_df[target].astype(bool)
+
 
         mlflow.evaluate(
+            #model = gm,
             data = pop_df,
             targets=target,
             predictions="predictions",
