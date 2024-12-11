@@ -88,13 +88,7 @@ def evaluate(
     baseline_config=None,
     inference_params=None,
 ):
-    from getml import mlflow
-    getml_model = mlflow.pyfunc.load_model(model_uri=model)
-    a = getml_model.unwrap_python_model()
-    skl_model = mlflow.sklearn.load_model(model_uri=model)
-    preds = skl_model.predict(data)
-    probs = skl_model.predict_proba(data)
-    print('hello!!##############')
+    print("wrapping evaluate")
 
     return _evaluate(
         model=model,
