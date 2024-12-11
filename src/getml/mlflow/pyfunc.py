@@ -32,6 +32,8 @@ from mlflow.utils.model_utils import (
     _validate_and_prepare_target_save_path,
 )
 
+from mlflow.pyfunc import PyFuncModel
+
 FLAVOR_NAME = "getml"
 
 _logger = logging.getLogger(__name__)
@@ -102,8 +104,10 @@ def _load_model(path):
         dirs_exist_ok=True,
     )
     getml.set_project(getml_project_name)
-
-    return getml.pipeline.load(getml_pipeline_id)
+    model_meta = Model.load(os.path.join(path, MLMODEL_FILE_NAME))
+    pipe = getml.pipeline.load(getml_pipeline_id)
+    wrapper = _GetMLModelWrapper(pipe)
+    return PyFuncModel(model_impl=wrapper, model_meta=model_meta)
 
 def load_model(model_uri, dst_path=None):
     """Load an H2O model from a local file (if ``run_id`` is ``None``) or a run.

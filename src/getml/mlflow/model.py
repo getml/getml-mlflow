@@ -1,20 +1,23 @@
 import logging
 from src.getml.mlflow.autologging import autolog as _autolog
 from mlflow.utils.autologging_utils import autologging_integration
+from mlflow.pyfunc import PythonModel, PyFuncModel
+from mlflow import evaluate as _evaluate
 
+from typing import Dict
 FLAVOR_NAME = "getml"
 
 _logger = logging.getLogger(__name__)
 
 
-class _GetMLModelWrapper():
+class _GetMLModelWrapper(PythonModel):
     def __init__(self, getml_pipeline):
         self.getml_pipeline = getml_pipeline
 
     def get_raw_model(self):
         return self.getml_pipeline
 
-    def predict(self, data):
+    def predict(self, data: Dict[str, any]):
         import getml
 
         self._validate_incoming_data(data)
@@ -64,7 +67,56 @@ class _GetMLModelWrapper():
 
         return roles
 
+def evaluate(
+    model=None,
+    data=None,
+    *,
+    model_type=None,
+    targets=None,
+    predictions=None,
+    dataset_path=None,
+    feature_names=None,
+    evaluators=None,
+    evaluator_config=None,
+    custom_metrics=None,
+    extra_metrics=None,
+    custom_artifacts=None,
+    validation_thresholds=None,
+    baseline_model=None,
+    env_manager="local",
+    model_config=None,
+    baseline_config=None,
+    inference_params=None,
+):
+    from getml import mlflow
+    getml_model = mlflow.pyfunc.load_model(model_uri=model)
+    a = getml_model.unwrap_python_model()
+    skl_model = mlflow.sklearn.load_model(model_uri=model)
+    preds = skl_model.predict(data)
+    probs = skl_model.predict_proba(data)
+    print('hello!!##############')
 
+    return _evaluate(
+        model=model,
+        data=data,
+        model_type=model_type,
+        targets=targets,
+        predictions=predictions,
+        dataset_path=dataset_path,
+        feature_names=feature_names,
+        evaluators=evaluators,
+        evaluator_config=evaluator_config,
+        custom_metrics=custom_metrics,
+        extra_metrics=extra_metrics,
+        custom_artifacts=custom_artifacts,
+        validation_thresholds=validation_thresholds,
+        baseline_model=baseline_model,
+        env_manager=env_manager,
+        model_config=model_config,
+        baseline_config=baseline_config,
+        inference_params=inference_params,
+    )
+    
 
 
 @autologging_integration(FLAVOR_NAME)
