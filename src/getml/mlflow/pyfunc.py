@@ -7,9 +7,10 @@ from typing import Any, Union
 import yaml
 
 import getml
+import getml.mlflow.pyfunc
 import mlflow
 import mlflow.models
-import src.getml.mlflow.pyfunc
+from getml.mlflow.model import _GetMLModelWrapper
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
@@ -38,7 +39,6 @@ from mlflow.utils.model_utils import (
     _validate_and_prepare_target_save_path,
 )
 from mlflow.utils.requirements_utils import _get_pinned_requirement
-from src.getml.mlflow.model import _GetMLModelWrapper
 
 FLAVOR_NAME = "getml"
 
@@ -187,7 +187,7 @@ def log_model(
     """
     return Model.log(
         artifact_path=artifact_path,
-        flavor=src.getml.mlflow.pyfunc,
+        flavor=getml.mlflow.pyfunc,
         registered_model_name=registered_model_name,
         getml_pipeline=getml_pipeline,
         conda_env=conda_env,

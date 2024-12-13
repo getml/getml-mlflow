@@ -4,10 +4,10 @@ from typing import Any, Dict
 import pandas as pd
 
 import getml
+from getml.mlflow.autologging import autolog as _autolog
 from mlflow import evaluate as _evaluate
 from mlflow.pyfunc.model import PythonModel
 from mlflow.utils.autologging_utils import autologging_integration
-from src.getml.mlflow.autologging import autolog as _autolog
 
 FLAVOR_NAME = "getml"
 

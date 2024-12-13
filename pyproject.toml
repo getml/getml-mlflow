@@ -61,3 +61,7 @@ packages = ["src/getml"]
 
 [tool.hatch.build.targets.hatch_editable]
 sources = ["src"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
