@@ -1,15 +1,21 @@
 import json
 import logging
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Any
 
+import numpy as np
+import requests
+
+import getml
 import mlflow
+import mlflow.data
+import mlflow.data.pandas_dataset
 from mlflow.data.pandas_dataset import PandasDataset
 from mlflow.entities.dataset_input import DatasetInput
 from mlflow.entities.input_tag import InputTag
-from mlflow.utils.autologging_utils import safe_patch
 from mlflow.utils.autologging_utils.client import MlflowAutologgingQueueingClient
+from mlflow.utils.autologging_utils.safety import safe_patch
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
 _logger = logging.getLogger(__name__)
@@ -20,6 +26,14 @@ class LogInfo:
     params: dict[str, Any] = field(default_factory=dict)
     metrics: dict[str, float] = field(default_factory=dict)
     tags: dict[str, Any] = field(default_factory=dict)
+
+
+def _round(number: float | list[float], ndigits: int = 2) -> float | list[float]:
+    return (
+        [round(n, ndigits) for n in number]
+        if isinstance(number, list)
+        else round(number, ndigits)
+    )
 
 
 def autolog(
@@ -36,9 +50,6 @@ def autolog(
     log_post_training_metrics=True,
 ):
     flavor_name = "getml"
-    from dataclasses import fields, is_dataclass
-
-    import getml
 
     def _patch_pipeline_method(
         flavor_name, class_def, func_name, patched_fn, manage_run
@@ -101,14 +112,14 @@ def autolog(
         scores = getml_pipeline.scores
 
         if getml_pipeline.is_classification:
-            metrics["train_auc"] = round(scores.auc, 2)
-            metrics["train_accuracy"] = round(scores.accuracy, 2)
-            metrics["train_cross_entropy"] = round(scores.cross_entropy, 4)
+            metrics["train_auc"] = _round(scores.auc, 2)
+            metrics["train_accuracy"] = _round(scores.accuracy, 2)
+            metrics["train_cross_entropy"] = _round(scores.cross_entropy, 4)
 
         if getml_pipeline.is_regression:
             metrics["train_mae"] = scores.mae
             metrics["train_rmse"] = scores.rmse
-            metrics["train_rsquared"] = round(scores.rsquared, 2)
+            metrics["train_rsquared"] = _round(scores.rsquared, 2)
 
         # for feature in getml_pipeline.features:
         #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
@@ -125,8 +136,8 @@ def autolog(
         )
 
     def _collect_available_engine_metrics() -> dict:
-        import requests
-
+        # FIXME: Which is the right port?
+        # FIXME: Set the right URI.
         engine_metrics = {
             "engine_cpu_usage_per_virtual_core_in_pct": "http://localhost:1709/getcpuusage/",
             "memory_usage_in_pct": "http://localhost:1709/getmemoryusage/",
@@ -143,9 +154,6 @@ def autolog(
         stop_event: threading.Event,
         engine_metrics_to_be_tracked: dict,
     ) -> None:
-        import numpy as np
-        import requests
-
         step = 0
         collected_metrics_data = {}
         while not stop_event.is_set():
@@ -246,8 +254,11 @@ def autolog(
         if log_datasets:
             try:
                 datasets = []
-                population_dataset: PandasDataset = mlflow.data.from_pandas(
-                    args[0].population.to_pandas(), name=args[0].population.base.name
+                population_dataset: PandasDataset = (
+                    mlflow.data.pandas_dataset.from_pandas(
+                        args[0].population.to_pandas(),
+                        name=args[0].population.base.name,
+                    )
                 )
                 tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value="Population")]
                 datasets.append(
@@ -258,8 +269,10 @@ def autolog(
 
                 for name, peripheral in args[0].peripheral.items():
                     tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value="Peripheral")]
-                    peripheral_dataset: PandasDataset = mlflow.data.from_pandas(
-                        peripheral.to_pandas(), name=name
+                    peripheral_dataset: PandasDataset = (
+                        mlflow.data.pandas_dataset.from_pandas(
+                            peripheral.to_pandas(), name=name
+                        )
                     )
                     datasets.append(
                         DatasetInput(

@@ -1,14 +1,19 @@
 import logging
 import os
 import pathlib
+import shutil
 from typing import Any, Union
 
 import yaml
 
+import getml
 import mlflow
+import mlflow.models
+import src.getml.mlflow.pyfunc
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
+from mlflow.pyfunc import PyFuncModel
 from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from mlflow.utils.docstring_utils import LOG_MODEL_PARAM_DOCS, format_docstring
 from mlflow.utils.environment import (
@@ -16,6 +21,7 @@ from mlflow.utils.environment import (
     _CONSTRAINTS_FILE_NAME,
     _PYTHON_ENV_FILE_NAME,
     _REQUIREMENTS_FILE_NAME,
+    _mlflow_conda_env,
     _process_conda_env,
     _process_pip_requirements,
     _PythonEnv,
@@ -31,18 +37,12 @@ from mlflow.utils.model_utils import (
     _validate_and_copy_code_paths,
     _validate_and_prepare_target_save_path,
 )
-
-from mlflow.pyfunc import PyFuncModel
+from mlflow.utils.requirements_utils import _get_pinned_requirement
+from src.getml.mlflow.model import _GetMLModelWrapper
 
 FLAVOR_NAME = "getml"
 
 _logger = logging.getLogger(__name__)
-
-
-from mlflow.utils.environment import _mlflow_conda_env
-from mlflow.utils.requirements_utils import _get_pinned_requirement
-from mlflow.tracking.artifact_utils import _download_artifact_from_uri
-from src.getml.mlflow.model import _GetMLModelWrapper
 
 
 def get_default_pip_requirements(include_cloudpickle=False):
@@ -79,8 +79,6 @@ def _ignore(pipeline_id: str, directory: str, files: list[str]):
 def _copy_getml_engine_folders(
     getml_project_folder: pathlib.Path, pipeline_id: str, dst_path: str
 ):
-    import shutil
-
     dst_project_path = pathlib.Path(dst_path) / "projects"
 
     # copy data structure but what is really necessary
@@ -92,9 +90,6 @@ def _copy_getml_engine_folders(
 
 
 def _load_model(path):
-    import shutil
-    import getml
-
     with open(os.path.join(path, "getml.yaml")) as f:
         getml_settings = yaml.safe_load(f.read())
 
@@ -168,8 +163,6 @@ def log_model(
     metadata=None,
     **kwargs,
 ):
-    from getml.mlflow import pyfunc
-
     """Log an H2O model as an MLflow artifact for the current run.
 
     Args:
@@ -194,7 +187,7 @@ def log_model(
     """
     return Model.log(
         artifact_path=artifact_path,
-        flavor=pyfunc,
+        flavor=src.getml.mlflow.pyfunc,
         registered_model_name=registered_model_name,
         getml_pipeline=getml_pipeline,
         conda_env=conda_env,
@@ -228,8 +221,6 @@ def save_model(
     extra_pip_requirements=None,
     metadata=None,
 ):
-    import getml
-
     _validate_env_arguments(conda_env, pip_requirements, extra_pip_requirements)
     path = os.path.abspath(path)
 

@@ -1,10 +1,13 @@
 import logging
-from src.getml.mlflow.autologging import autolog as _autolog
-from mlflow.utils.autologging_utils import autologging_integration
-from mlflow.pyfunc import PythonModel, PyFuncModel
-from mlflow import evaluate as _evaluate
+from typing import Any, Dict
 
-from typing import Dict
+import pandas as pd
+
+import getml
+from mlflow import evaluate as _evaluate
+from mlflow.pyfunc.model import PythonModel
+from mlflow.utils.autologging_utils import autologging_integration
+from src.getml.mlflow.autologging import autolog as _autolog
 
 FLAVOR_NAME = "getml"
 
@@ -18,9 +21,15 @@ class _GetMLModelWrapper(PythonModel):
     def get_raw_model(self):
         return self.getml_pipeline
 
-    def predict(self, data: Dict[str, any]):
-        import getml
+    # FIXME: Where is implementation of this abstract base method?
+    # def predict(
+    #     self,
+    #     context,
+    #     model_input,
+    #     params: Optional[Dict[str, Any]] = None,
+    # )
 
+    def predict(self, data: Dict[str, Any]):
         self._validate_incoming_data(data)
         roles = self._extract_roles_from_data_model()
 
@@ -41,8 +50,6 @@ class _GetMLModelWrapper(PythonModel):
         return self.getml_pipeline.predict(container.full)
 
     def _validate_incoming_data(self, data):
-        import pandas as pd
-
         assert "population" in data
         assert "peripheral" in data
         assert isinstance(data["population"], pd.DataFrame)
