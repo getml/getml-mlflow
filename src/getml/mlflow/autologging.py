@@ -14,6 +14,7 @@ from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
 _logger = logging.getLogger(__name__)
 
+
 @dataclass
 class LogInfo:
     params: dict[str, Any] = field(default_factory=dict)
@@ -39,7 +40,9 @@ def autolog(
 
     import getml
 
-    def _patch_pipeline_method(flavor_name, class_def, func_name, patched_fn, manage_run):
+    def _patch_pipeline_method(
+        flavor_name, class_def, func_name, patched_fn, manage_run
+    ):
         safe_patch(
             flavor_name,
             class_def,
@@ -68,23 +71,27 @@ def autolog(
                             field_value = getattr(v, field.name)
                             if isinstance(field_value, (frozenset, set)):
                                 field_value = json.dumps(list(field_value))
-                            elif isinstance(field_value, getml.feature_learning.FastProp):
+                            elif isinstance(
+                                field_value, getml.feature_learning.FastProp
+                            ):
                                 field_value = field_value.__class__.__name__
                             elif not isinstance(field_value, str):
                                 field_value = json.dumps(field_value)
 
-                            pipeline_informations[f"{parameter_name}.{name}.{field.name}"] = (
-                                field_value
-                            )
+                            pipeline_informations[
+                                f"{parameter_name}.{name}.{field.name}"
+                            ] = field_value
             elif isinstance(values, str):
                 pipeline_informations[parameter_name] = values
             else:
-               value_name = values.__class__.__name__
-               pipeline_informations[parameter_name] = value_name
+                value_name = values.__class__.__name__
+                pipeline_informations[parameter_name] = value_name
         tags = [str(t) for t in getml_pipeline.tags]
         return LogInfo(params=pipeline_informations, tags=dict(zip(tags, tags)))
 
-    def _extract_fitted_pipeline_informations(getml_pipeline: getml.Pipeline) -> LogInfo:
+    def _extract_fitted_pipeline_informations(
+        getml_pipeline: getml.Pipeline,
+    ) -> LogInfo:
         params = {
             "pipeline_id": getml_pipeline.id,
         }
@@ -94,7 +101,7 @@ def autolog(
         scores = getml_pipeline.scores
 
         if getml_pipeline.is_classification:
-            metrics["train_auc"] = round(scores.auc,2)
+            metrics["train_auc"] = round(scores.auc, 2)
             metrics["train_accuracy"] = round(scores.accuracy, 2)
             metrics["train_cross_entropy"] = round(scores.cross_entropy, 4)
 
@@ -154,17 +161,26 @@ def autolog(
             step += 1
             stop_event.wait(1)
 
-    def patched_fit_mlflow(original, self: getml.Pipeline, *args, **kwargs) -> getml.pipeline.Pipeline:
+    def patched_fit_mlflow(
+        original, self: getml.Pipeline, *args, **kwargs
+    ) -> getml.pipeline.Pipeline:
         autologging_client = MlflowAutologgingQueueingClient()
         assert (active_run := mlflow.active_run())
         run_id = active_run.info.run_id
 
-        engine_metrics_to_be_tracked = _log_pretraining_metadata(autologging_client, self, run_id, *args)
+        engine_metrics_to_be_tracked = _log_pretraining_metadata(
+            autologging_client, self, run_id, *args
+        )
         if engine_metrics_to_be_tracked:
             stop_event = threading.Event()
             metrics_thread = threading.Thread(
                 target=_extract_engine_system_metrics,
-                args=(autologging_client, run_id, stop_event, engine_metrics_to_be_tracked),
+                args=(
+                    autologging_client,
+                    run_id,
+                    stop_event,
+                    engine_metrics_to_be_tracked,
+                ),
             )
             metrics_thread.start()
         else:
@@ -187,20 +203,23 @@ def autolog(
         autologging_client.flush(synchronous=True)
         return fit_output
 
-    def patched_score_method(original, self: getml.Pipeline, *args, **kwargs) -> getml.pipeline.Scores:
-        #gm = GetMLWrapper(self)
+    def patched_score_method(
+        original, self: getml.Pipeline, *args, **kwargs
+    ) -> getml.pipeline.Scores:
+        # gm = GetMLWrapper(self)
         target = self.data_model.population.roles.target[0]
         pop_df = args[0].population.to_pandas()
         pop_df["predictions"] = self.predict(*args)
-        pop_df['predictions'] = pop_df.round({'predictions': 0})['predictions'].astype(bool)
+        pop_df["predictions"] = pop_df.round({"predictions": 0})["predictions"].astype(
+            bool
+        )
         model_type = ["regressor" if self.is_regression else "classifier"][0]
         if model_type == "classifier":
             pop_df[target] = pop_df[target].astype(bool)
 
-
         mlflow.evaluate(
-            #model = gm,
-            data = pop_df,
+            # model = gm,
+            data=pop_df,
             targets=target,
             predictions="predictions",
             model_type=["regressor" if self.is_regression else "classifier"][0],
@@ -208,12 +227,12 @@ def autolog(
         )
         return original(self, *args, **kwargs)
 
-    def _log_pretraining_metadata(autologging_client: MlflowAutologgingQueueingClient,
-                                  self: getml.Pipeline,
-                                  run_id: str,
-                                  *args
-                                  ) -> dict:
-
+    def _log_pretraining_metadata(
+        autologging_client: MlflowAutologgingQueueingClient,
+        self: getml.Pipeline,
+        run_id: str,
+        *args,
+    ) -> dict:
         pipeline_log_info = _extract_pipeline_informations(self)
         autologging_client.log_params(
             run_id=run_id,
@@ -227,25 +246,36 @@ def autolog(
         if log_datasets:
             try:
                 datasets = []
-                population_dataset: PandasDataset = mlflow.data.from_pandas(args[0].population.to_pandas(), name = args[0].population.base.name)
-                tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value='Population')]
-                datasets.append(DatasetInput(dataset=population_dataset._to_mlflow_entity(), tags=tags))
+                population_dataset: PandasDataset = mlflow.data.from_pandas(
+                    args[0].population.to_pandas(), name=args[0].population.base.name
+                )
+                tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value="Population")]
+                datasets.append(
+                    DatasetInput(
+                        dataset=population_dataset._to_mlflow_entity(), tags=tags
+                    )
+                )
 
                 for name, peripheral in args[0].peripheral.items():
-                    tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value='Peripheral')]
-                    peripheral_dataset: PandasDataset = mlflow.data.from_pandas(peripheral.to_pandas(), name = name)
-                    datasets.append(DatasetInput(dataset=peripheral_dataset._to_mlflow_entity(), tags=tags))
-
-                autologging_client.log_inputs(
-                        run_id=run_id, datasets=datasets
+                    tags = [InputTag(key=MLFLOW_DATASET_CONTEXT, value="Peripheral")]
+                    peripheral_dataset: PandasDataset = mlflow.data.from_pandas(
+                        peripheral.to_pandas(), name=name
                     )
+                    datasets.append(
+                        DatasetInput(
+                            dataset=peripheral_dataset._to_mlflow_entity(), tags=tags
+                        )
+                    )
+
+                autologging_client.log_inputs(run_id=run_id, datasets=datasets)
 
             except Exception as e:
                 _logger.warning(
-                    "Failed to log training dataset information to MLflow Tracking. Reason: %s", e
+                    "Failed to log training dataset information to MLflow Tracking. Reason: %s",
+                    e,
                 )
         return engine_metrics_to_be_tracked
-    
+
     _patch_pipeline_method(
         flavor_name=flavor_name,
         class_def=getml.pipeline.Pipeline,

@@ -45,7 +45,6 @@ from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 from src.getml.mlflow.model import _GetMLModelWrapper
 
 
-
 def get_default_pip_requirements(include_cloudpickle=False):
     """
     Returns:
@@ -66,7 +65,9 @@ def get_default_conda_env(include_cloudpickle=False):
         The default Conda environment for MLflow Models produced by calls to
         :func:`save_model()` and :func:`log_model()`.
     """
-    return _mlflow_conda_env(additional_pip_deps=get_default_pip_requirements(include_cloudpickle))
+    return _mlflow_conda_env(
+        additional_pip_deps=get_default_pip_requirements(include_cloudpickle)
+    )
 
 
 def _ignore(pipeline_id: str, directory: str, files: list[str]):
@@ -75,7 +76,9 @@ def _ignore(pipeline_id: str, directory: str, files: list[str]):
     return directory, files
 
 
-def _copy_getml_engine_folders(getml_project_folder: pathlib.Path, pipeline_id: str, dst_path: str):
+def _copy_getml_engine_folders(
+    getml_project_folder: pathlib.Path, pipeline_id: str, dst_path: str
+):
     import shutil
 
     dst_project_path = pathlib.Path(dst_path) / "projects"
@@ -87,6 +90,7 @@ def _copy_getml_engine_folders(getml_project_folder: pathlib.Path, pipeline_id: 
         ignore=lambda directory, files: _ignore(pipeline_id, directory, files),
     )
 
+
 def _load_model(path):
     import shutil
     import getml
@@ -97,7 +101,9 @@ def _load_model(path):
     getml_project_name = getml_settings["getml_project_name"]
     getml_pipeline_id = getml_settings["pipeline_id"]
     current_user_home_dir = pathlib.Path.home()
-    getml_project_path = current_user_home_dir / ".getML" / "projects" / getml_project_name
+    getml_project_path = (
+        current_user_home_dir / ".getML" / "projects" / getml_project_name
+    )
     shutil.copytree(
         src=os.path.join(path, "projects"),
         dst=str(getml_project_path),
@@ -108,6 +114,7 @@ def _load_model(path):
     pipe = getml.pipeline.load(getml_pipeline_id)
     wrapper = _GetMLModelWrapper(pipe)
     return PyFuncModel(model_impl=wrapper, model_meta=model_meta)
+
 
 def load_model(model_uri, dst_path=None):
     """Load an H2O model from a local file (if ``run_id`` is ``None``) or a run.
@@ -136,8 +143,12 @@ def load_model(model_uri, dst_path=None):
         <http://docs.h2o.ai/h2o/latest-stable/h2o-py/docs/intro.html#models>`_.
 
     """
-    local_model_path = _download_artifact_from_uri(artifact_uri=model_uri, output_path=dst_path)
-    flavor_conf = _get_flavor_configuration(model_path=local_model_path, flavor_name=FLAVOR_NAME)
+    local_model_path = _download_artifact_from_uri(
+        artifact_uri=model_uri, output_path=dst_path
+    )
+    flavor_conf = _get_flavor_configuration(
+        model_path=local_model_path, flavor_name=FLAVOR_NAME
+    )
     _add_code_from_conf_to_system_path(local_model_path, flavor_conf)
     # Flavor configurations for models saved in MLflow version <= 0.8.0 may not contain a
     # `data` key; in this case, we assume the model artifact path to be `model.h2o`
@@ -158,6 +169,7 @@ def log_model(
     **kwargs,
 ):
     from getml.mlflow import pyfunc
+
     """Log an H2O model as an MLflow artifact for the current run.
 
     Args:
@@ -203,6 +215,7 @@ def _load_pyfunc(path):
     """
     return _GetMLModelWrapper(_load_model(path))
 
+
 @format_docstring(LOG_MODEL_PARAM_DOCS.format(package_name="getml"))
 def save_model(
     getml_pipeline,
@@ -226,7 +239,9 @@ def save_model(
     current_user_home_dir = pathlib.Path.home()
 
     getml_project_name = (
-        settings.get("project_name", getml.project.name) if settings else getml.project.name
+        settings.get("project_name", getml.project.name)
+        if settings
+        else getml.project.name
     )  # type: ignore
     if settings and (wd := settings.get("working_dir")):
         if not pathlib.Path(wd).exists():
@@ -238,7 +253,9 @@ def save_model(
         raise Exception("No default getML project directory")
 
     assert getml_project_name
-    if not (getml_project_folder := getml_working_dir / "projects" / getml_project_name).exists():
+    if not (
+        getml_project_folder := getml_working_dir / "projects" / getml_project_name
+    ).exists():
         raise Exception(f"{getml_project_folder} does not exists")
 
     if mlflow_model is None:
@@ -256,7 +273,9 @@ def save_model(
     with open(os.path.join(path, "getml.yaml"), "w") as settings_file:
         yaml.safe_dump(settings, stream=settings_file)
 
-    _copy_getml_engine_folders(getml_project_folder, getml_pipeline.getml_pipeline.id, path)
+    _copy_getml_engine_folders(
+        getml_project_folder, getml_pipeline.getml_pipeline.id, path
+    )
     # copy files from project folder
     pyfunc.add_to_model(
         mlflow_model,

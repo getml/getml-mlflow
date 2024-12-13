@@ -5,6 +5,7 @@ from mlflow.pyfunc import PythonModel, PyFuncModel
 from mlflow import evaluate as _evaluate
 
 from typing import Dict
+
 FLAVOR_NAME = "getml"
 
 _logger = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ class _GetMLModelWrapper(PythonModel):
                 peripheral_df, name=name, roles=roles["peripherals"][name]
             )
 
-        container = getml.data.Container(population=population, peripheral=peripheral_frames)
+        container = getml.data.Container(
+            population=population, peripheral=peripheral_frames
+        )
 
         return self.getml_pipeline.predict(container.full)
 
@@ -66,6 +69,7 @@ class _GetMLModelWrapper(PythonModel):
             roles["peripherals"][peripheral.name] = peripheral.roles
 
         return roles
+
 
 def evaluate(
     model=None,
@@ -110,7 +114,6 @@ def evaluate(
         baseline_config=baseline_config,
         inference_params=inference_params,
     )
-    
 
 
 @autologging_integration(FLAVOR_NAME)
