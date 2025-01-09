@@ -11,6 +11,9 @@ import getml
 import mlflow
 import mlflow.data
 import mlflow.data.pandas_dataset
+from getml.mlflow.patch_pipeline_init import PatchPipelineInit
+from getml.mlflow.patch_pipeline_fit import PatchPipelineFit
+from getml.mlflow.patch_pipeline_score import PatchPipelineScore
 from mlflow.data.pandas_dataset import PandasDataset
 from mlflow.entities.dataset_input import DatasetInput
 from mlflow.entities.input_tag import InputTag
@@ -36,6 +39,7 @@ def _round(number: float | list[float], ndigits: int = 2) -> float | list[float]
     )
 
 
+# TODO: Pass and check arguments to the right functions
 def autolog(
     flavor_name,
     log_input_examples=False,
@@ -50,17 +54,6 @@ def autolog(
     log_post_training_metrics=True,
 ):
     flavor_name = "getml"
-
-    def _patch_pipeline_method(
-        flavor_name, class_def, func_name, patched_fn, manage_run
-    ):
-        safe_patch(
-            flavor_name,
-            class_def,
-            func_name,
-            patched_fn,
-            manage_run=manage_run,
-        )
 
     def _extract_pipeline_informations(getml_pipeline: getml.Pipeline) -> LogInfo:
         params = (
@@ -289,18 +282,26 @@ def autolog(
                 )
         return engine_metrics_to_be_tracked
 
-    _patch_pipeline_method(
-        flavor_name=flavor_name,
-        class_def=getml.pipeline.Pipeline,
-        func_name="fit",
-        patched_fn=patched_fit_mlflow,
-        manage_run=True,
+    safe_patch(
+        autologging_integration=flavor_name,
+        destination=getml.pipeline.Pipeline,
+        function_name="__init__",
+        patch_function=PatchPipelineInit,
+        manage_run=False,
     )
 
-    _patch_pipeline_method(
-        flavor_name=flavor_name,
-        class_def=getml.pipeline.Pipeline,
-        func_name="score",
-        patched_fn=patched_score_method,
-        manage_run=True,
+    safe_patch(
+        autologging_integration=flavor_name,
+        destination=getml.pipeline.Pipeline,
+        function_name="fit",
+        patch_function=PatchPipelineFit,
+        manage_run=False,
+    )
+
+    safe_patch(
+        autologging_integration=flavor_name,
+        destination=getml.pipeline.Pipeline,
+        function_name="score",
+        patch_function=PatchPipelineScore,
+        manage_run=False,
     )
