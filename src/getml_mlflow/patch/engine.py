@@ -1,10 +1,14 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import mlflow
 import mlflow.entities
 
 
-def set_project(original: Callable, name: str) -> None:
+def set_project(
+    original: Callable,
+    name: str,
+    mlflowclient: Optional[mlflow.MlflowClient] = None,
+) -> None:
     set_project_method: Callable = original
     set_project_method(name)
     if not mlflow.search_experiments(filter_string=f"name='{name}'"):

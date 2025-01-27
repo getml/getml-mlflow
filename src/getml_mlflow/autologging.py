@@ -1,11 +1,22 @@
 from typing import Dict, Optional
 
 import getml
+import mlflow
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import safe_patch
 
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.patch import engine, pipeline
+
+
+def with_mlflowclient(mlflowclient: mlflow.MlflowClient):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs, mlflowclient=mlflowclient)
+
+        return wrapper
+
+    return decorator
 
 
 # TODO: Pass and check arguments to the right functions
@@ -21,6 +32,8 @@ def autolog(
     silent: bool = False,
     extra_tags: Optional[Dict[str, str]] = None,
 ):
+    mlflowclient = mlflow.MlflowClient()
+
     safe_patch(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
@@ -39,7 +52,7 @@ def autolog(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="fit",
-        patch_function=pipeline.fit,
+        patch_function=with_mlflowclient(mlflowclient)(pipeline.fit),
         manage_run=False,
     )
 
@@ -47,7 +60,7 @@ def autolog(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="score",
-        patch_function=pipeline.score,
+        patch_function=with_mlflowclient(mlflowclient)(pipeline.score),
         manage_run=False,
     )
 
@@ -56,14 +69,14 @@ def autolog(
             autologging_integration=FLAVOR_NAME,
             destination=destination,
             function_name="set_project",
-            patch_function=engine.set_project,
+            patch_function=with_mlflowclient(mlflowclient)(engine.set_project),
             manage_run=False,
         )
 
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="predict",
-        patch_function=pipeline.predict,
-        manage_run=False,
-    )
+    # safe_patch(
+    #     autologging_integration=FLAVOR_NAME,
+    #     destination=getml.pipeline.Pipeline,
+    #     function_name="predict",
+    #     patch_function=pipeline.predict,
+    #     manage_run=False,
+    # )

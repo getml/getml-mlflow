@@ -61,14 +61,12 @@ def _serialize_field_value(field_value: Any) -> str:
 @staticmethod
 def log_tags(pipeline: getml.Pipeline) -> None:
     tags: Dict[str, str] = {"id": pipeline.id}
-    index: int = 0
     for tag in map(str, pipeline.tags):
         if ":" in tag:
             key, value = tag.split(":")
             tags[key.strip()] = value.strip()
         else:
-            tags[str(index)] = tag
-            index = index + 1
+            tags[tag] = tag
     mlflow.set_tags(tags=tags)
 
 
