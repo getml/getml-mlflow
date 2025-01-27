@@ -1,3 +1,3 @@
-from getml_mlflow.logging import pipeline, table
+from getml_mlflow.logging import numpy, pipeline, table
 
-__all__ = ["pipeline", "table"]
+__all__ = ["numpy", "pipeline", "table"]

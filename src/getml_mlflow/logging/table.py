@@ -3,8 +3,9 @@ from typing import Dict, Sequence, Union
 import getml
 import mlflow
 import mlflow.data.pandas_dataset
-from mlflow.data.pandas_dataset import PandasDataset
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
+
+from getml_mlflow.data.getml_dataset import from_getml
 
 
 def log_peripheral_tables(
@@ -32,17 +33,20 @@ def log_table(
 
 
 def _log_dataframe_or_view(
-    table: Union[getml.DataFrame, getml.data.View], context: str
+    dataframe_like: Union[getml.DataFrame, getml.data.View], context: str
 ) -> None:
-    name: str = str(
-        table.name
-        if isinstance(table, getml.DataFrame)
-        else f"{table.name}.{table.base.name}"
+    # name: str = str(
+    #     table.name
+    #     if isinstance(table, getml.DataFrame)
+    #     else f"{table.name}.{table.base.name}"
+    # )
+    # dataset: PandasDataset = mlflow.data.pandas_dataset.from_pandas(
+    #     table.to_pandas(), name=name
+    # )
+    mlflow.log_input(
+        dataset=from_getml(dataframe_like),
+        tags={MLFLOW_DATASET_CONTEXT: context},
     )
-    dataset: PandasDataset = mlflow.data.pandas_dataset.from_pandas(
-        table.to_pandas(), name=name
-    )
-    mlflow.log_input(dataset=dataset, tags={MLFLOW_DATASET_CONTEXT: context})
 
 
 def _log_subset(subset: getml.data.Subset, context: str) -> None:

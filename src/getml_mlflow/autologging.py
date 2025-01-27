@@ -29,6 +29,12 @@ def autolog(
         manage_run=False,
     )
 
+    # TODO: Log Pipeline on fit, because of new ID
+    # TODO: Add Pipeline-ID to RUN Name
+    # TODO: Check folder Pipeline to Artifact to getML
+    # TODO: Log metadata on Dataset
+    # TODO: Add project/pipeline path option to autologging
+
     safe_patch(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
@@ -53,3 +59,11 @@ def autolog(
             patch_function=engine.set_project,
             manage_run=False,
         )
+
+    safe_patch(
+        autologging_integration=FLAVOR_NAME,
+        destination=getml.pipeline.Pipeline,
+        function_name="predict",
+        patch_function=pipeline.predict,
+        manage_run=False,
+    )
