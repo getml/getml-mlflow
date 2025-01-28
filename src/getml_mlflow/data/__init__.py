@@ -1,3 +1,3 @@
-from getml_mlflow.data.getml_dataset import GetMLDataset, from_getml
+from getml_mlflow.data import getml_dataset
 
-__all__ = ["GetMLDataset", "from_getml"]
+__all__ = ["getml_dataset"]

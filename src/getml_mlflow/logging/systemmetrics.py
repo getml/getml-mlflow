@@ -1,3 +1,4 @@
+import logging
 import threading
 from enum import StrEnum
 from typing import Dict, List, Optional
@@ -79,7 +80,10 @@ class SystemMetrics:
                 if response.ok:
                     valid_metrics_endpoints[name] = endpoint
             except requests.exceptions.RequestException as exception:
-                print("Engine metrics are available in the Enterprise edition.")
+                logging.getLogger("getML").warn(
+                    "Engine metrics are available in the Enterprise edition. "
+                    "Visit https://getml.com/latest/enterprise/ for more information"
+                )
                 self._mlflowclient.log_text(
                     run_id=self._run_id,
                     text=f"Exception on GET({endpoint}): {exception}",

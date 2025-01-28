@@ -3,9 +3,12 @@ from typing import Callable, Dict, Optional, Sequence, Union
 import getml
 import mlflow
 import mlflow.entities
+import numpy
 from mlflow.entities import RunStatus
+from numpy.typing import NDArray
 
 from getml_mlflow.logging.datacontainer import DataContainerLogger
+from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetrics
 
@@ -44,14 +47,10 @@ class Run:
 
     def _experiment_id(self) -> str:
         if run_info := getattr(self._pipeline, "_mlflow_run_info"):
-            print(f"Run Info: {run_info}")
-            print(f"Via Pipeline Run Experiment ID: {run_info.experiment_id}")
             return run_info.experiment_id
         else:
             project_name: str = getml.project.name
             if experiment := mlflow.get_experiment_by_name(project_name):
-                print(f"Experiment: {experiment}")
-                print(f"Via Project Experiment ID: {experiment.experiment_id}")
                 return experiment.experiment_id
 
             raise LookupError(f"MLflow Experiment '{project_name}' not found")
@@ -181,48 +180,51 @@ def score(
     return score_output
 
 
-# def predict(
-#     original: Callable,
-#     pipeline: getml.Pipeline,
-#     population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
-#     peripheral_tables: Optional[
-#         Union[
-#             Sequence[Union[getml.DataFrame, getml.data.View]],
-#             Dict[str, Union[getml.DataFrame, getml.data.View]],
-#         ]
-#     ] = None,
-#     table_name: str = "",
-# ) -> Union[NDArray[numpy.float_], None]:
-#     predict_method: Callable = original
-#     pipeline_run_id = getattr(pipeline, "mlflow_run_id")
-#
-#     # TODO: Add tags
-#     # TODO: Add description
-#     with mlflow.start_run(
-#         run_name="predict",
-#         nested=True,
-#         parent_run_id=pipeline_run_id,
-#     ) as predict_run:
-#         run_id = predict_run.info.run_id
-#
-#         logging.table.log_table(population_table, "Population")
-#         if peripheral_tables is not None:
-#             logging.table.log_peripheral_tables(peripheral_tables)
-#         mlflow.log_param("table_name", table_name)
-#
-#         predict_output: Union[NDArray[numpy.float_], None] = predict_method(
-#             pipeline, population_table, peripheral_tables
-#         )
-#         if predict_output is not None:
-#             logging.numpy.log_ndarray_as_artifact(
-#                 predict_output, f"pipeline.{pipeline.id}.predict.npy"
-#             )
-#         logging.pipeline.log_metrics(pipeline, run_id)
-#         mlflow.set_tag(key="id", value=pipeline.id)
-#
-#         return predict_output
-#
-#
+def predict(
+    original: Callable,
+    pipeline: getml.Pipeline,
+    population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
+    peripheral_tables: Optional[
+        Union[
+            Sequence[Union[getml.DataFrame, getml.data.View]],
+            Dict[str, Union[getml.DataFrame, getml.data.View]],
+        ]
+    ] = None,
+    table_name: str = "",
+    mlflowclient: Optional[mlflow.MlflowClient] = None,
+) -> Union[NDArray[numpy.float_], None]:
+    mlflowclient = mlflowclient or mlflow.MlflowClient()
+    predict_method: Callable = original
+
+    with Run(
+        pipeline=pipeline, mlflowclient=mlflowclient, name="predict"
+    ) as predict_run:
+        data_container_logger: DataContainerLogger = DataContainerLogger(
+            mlflowclient, predict_run.id
+        )
+        data_container_logger.log_data_container(population_table, "Population")
+        if peripheral_tables is not None:
+            data_container_logger.log_data_containers(peripheral_tables, "Peripheral")
+
+        mlflowclient.log_param(
+            run_id=predict_run.id, key="table_name", value=table_name
+        )
+
+        predict_output: Union[NDArray[numpy.float_], None] = predict_method(
+            pipeline, population_table, peripheral_tables
+        )
+        if predict_output is not None:
+            NumpyLogger(mlflowclient, predict_run.id).log_ndarray_as_artifact(
+                predict_output,
+                f"pipeline.{pipeline.id}.predict.npy",
+            )
+        PipelineLogger.of_autolog(
+            pipeline=pipeline, mlflowclient=mlflowclient
+        ).log_metrics(run_id=predict_run.id)
+
+    return predict_output
+
+
 # def transform(
 #     original: Callable,
 #     pipeline: getml.Pipeline,

@@ -5,6 +5,7 @@ import mlflow
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import safe_patch
 
+import getml_mlflow.logging.logger
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.patch import engine, pipeline
 
@@ -33,6 +34,7 @@ def autolog(
     extra_tags: Optional[Dict[str, str]] = None,
 ):
     mlflowclient = mlflow.MlflowClient()
+    getml_mlflow.logging.logger.set_up()
 
     safe_patch(
         autologging_integration=FLAVOR_NAME,
@@ -42,8 +44,6 @@ def autolog(
         manage_run=False,
     )
 
-    # TODO: Log Pipeline on fit, because of new ID
-    # TODO: Add Pipeline-ID to RUN Name
     # TODO: Check folder Pipeline to Artifact to getML
     # TODO: Log metadata on Dataset
     # TODO: Add project/pipeline path option to autologging
@@ -73,10 +73,10 @@ def autolog(
             manage_run=False,
         )
 
-    # safe_patch(
-    #     autologging_integration=FLAVOR_NAME,
-    #     destination=getml.pipeline.Pipeline,
-    #     function_name="predict",
-    #     patch_function=pipeline.predict,
-    #     manage_run=False,
-    # )
+    safe_patch(
+        autologging_integration=FLAVOR_NAME,
+        destination=getml.pipeline.Pipeline,
+        function_name="predict",
+        patch_function=with_mlflowclient(mlflowclient)(pipeline.predict),
+        manage_run=False,
+    )
