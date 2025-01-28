@@ -5,7 +5,7 @@ import mlflow
 import mlflow.entities
 from mlflow.entities import RunStatus
 
-from getml_mlflow import logging
+from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetrics
 
@@ -116,11 +116,16 @@ def fit(
         pipeline_logger.log_tags()
 
         with Run(pipeline=pipeline, mlflowclient=mlflowclient, name="fit") as fit_run:
-            logging.table.log_table(population_table, "Population")
+            data_container_logger: DataContainerLogger = DataContainerLogger(
+                mlflowclient, fit_run.id
+            )
+            data_container_logger.log_data_container(population_table, "Population")
             if peripheral_tables is not None:
-                logging.table.log_peripheral_tables(peripheral_tables)
+                data_container_logger.log_data_containers(
+                    peripheral_tables, "Peripheral"
+                )
             if validation_table is not None:
-                logging.table.log_table(validation_table, "Validation")
+                data_container_logger.log_data_container(validation_table, "Validation")
 
             with SystemMetrics(fit_run.id):
                 fit_output: getml.Pipeline = fit_method(
@@ -132,7 +137,7 @@ def fit(
                 )
 
             mlflowclient.set_tag(fit_run.id, "id", pipeline.id)
-            pipeline_logger.log_metrics()
+            pipeline_logger.log_metrics(run_id=fit_run.id)
 
         mlflowclient.set_tag(run.id, "id", pipeline.id)
         mlflowclient.update_run(
@@ -158,15 +163,20 @@ def score(
     score_method: Callable = original
     mlflowclient = mlflowclient or mlflow.MlflowClient()
 
-    with Run(pipeline=pipeline, mlflowclient=mlflowclient, name="score") as run:
-        logging.table.log_table(population_table, "Population")
+    with Run(pipeline=pipeline, mlflowclient=mlflowclient, name="score") as score_run:
+        data_container_logger: DataContainerLogger = DataContainerLogger(
+            mlflowclient, score_run.id
+        )
+        data_container_logger.log_data_container(population_table, "Population")
         if peripheral_tables is not None:
-            logging.table.log_peripheral_tables(peripheral_tables)
+            data_container_logger.log_data_containers(peripheral_tables, "Peripheral")
 
         score_output: getml.pipeline.Scores = score_method(
             pipeline, population_table, peripheral_tables
         )
-        PipelineLogger.of_autolog(pipeline, mlflowclient).log_metrics()
+        PipelineLogger.of_autolog(pipeline, mlflowclient).log_metrics(
+            run_id=score_run.id
+        )
 
     return score_output
 

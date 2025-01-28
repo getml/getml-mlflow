@@ -1,11 +1,12 @@
 import threading
 from enum import StrEnum
-from typing import Dict, Optional
-
-import numpy
-import requests
+from typing import Dict, List, Optional
 
 import mlflow
+import mlflow.entities
+import mlflow.utils.time
+import numpy
+import requests
 
 
 class Metric(StrEnum):
@@ -17,8 +18,14 @@ class SystemMetrics:
     HOST: str = "localhost"
     PORT: int = 1709
 
-    def __init__(self, run_id: str, host: str = HOST, port: int = PORT):
-        self._run_id = run_id
+    def __init__(
+        self,
+        run_id: str,
+        host: str = HOST,
+        port: int = PORT,
+        mlflowclient: Optional[mlflow.MlflowClient] = None,
+    ):
+        self._run_id: str = run_id
         self._event: threading.Event = threading.Event()
         self._thread: Optional[threading.Thread] = None
 
@@ -27,6 +34,7 @@ class SystemMetrics:
             Metric.CPU_USAGE: f"{url}/getcpuusage/",
             Metric.MEMORY_USAGE: f"{url}/getmemoryusage/",
         }
+        self._mlflowclient = mlflowclient or mlflow.MlflowClient()
 
     def _run_logging_metrics(self) -> None:
         step: int = 0
@@ -37,23 +45,30 @@ class SystemMetrics:
             self._event.wait(1)
 
     def _log_metrics(self, step: int, metrics_endpoints: Dict[Metric, str]):
-        metrics: Dict[str, float] = {}
+        metrics: List[mlflow.entities.Metric] = []
+        timestamp: int = mlflow.utils.time.get_current_time_millis()
         for metric_name, metric_url in metrics_endpoints.items():
             try:
-                response = requests.get(metric_url)
-                metrics[metric_name] = numpy.round(response.json()["data"][0][-1], 2)
+                response: requests.Response = requests.get(metric_url)
+                metrics.append(
+                    mlflow.entities.Metric(
+                        key=metric_name,
+                        value=numpy.round(response.json()["data"][0][-1], 2),
+                        timestamp=timestamp,
+                        step=step,
+                    )
+                )
             except requests.exceptions.RequestException as exception:
-                mlflow.log_text(
-                    f"Exception on GET({metric_url}): {exception}",
-                    "error.log",
+                self._mlflowclient.log_text(
                     run_id=self._run_id,
+                    text=f"Exception on GET({metric_url}): {exception}",
+                    artifact_file="error.log",
                 )
                 continue
         if metrics:
-            mlflow.log_metrics(
+            self._mlflowclient.log_batch(
                 run_id=self._run_id,
                 metrics=metrics,
-                step=step,
             )
 
     def _valid_metrics_endpoints(self) -> Dict[Metric, str]:
@@ -65,10 +80,10 @@ class SystemMetrics:
                     valid_metrics_endpoints[name] = endpoint
             except requests.exceptions.RequestException as exception:
                 print("Engine metrics are available in the Enterprise edition.")
-                mlflow.log_text(
-                    f"Exception on GET({endpoint}): {exception}",
-                    "error.log",
+                self._mlflowclient.log_text(
                     run_id=self._run_id,
+                    text=f"Exception on GET({endpoint}): {exception}",
+                    artifact_file="error.log",
                 )
                 continue
         return valid_metrics_endpoints
@@ -82,3 +97,4 @@ class SystemMetrics:
         self._event.set()
         if self._thread is not None:
             self._thread.join()
+        self._thread = None

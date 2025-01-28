@@ -89,7 +89,8 @@ class PipelineLogger:
 
         self._mlflowclient.log_batch(run_id=self._run_info.run_id, tags=tags)
 
-    def log_metrics(self) -> None:
+    def log_metrics(self, run_id: Optional[str] = None) -> None:
+        run_id = run_id or self._run_info.run_id
         metrics: List[Metric] = []
 
         scores = self._pipeline.scores
@@ -117,7 +118,7 @@ class PipelineLogger:
         #     for i, t in enumerate(getml_pipeline.targets):
         #         metrics[f"targets.{i}"] = t
 
-        self._mlflowclient.log_batch(run_id=self._run_info.run_id, metrics=metrics)
+        self._mlflowclient.log_batch(run_id=run_id, metrics=metrics)
 
     def _serialize_metric(
         self, name: str, values: float | List[float], ndigits: Optional[int] = None
@@ -145,20 +146,3 @@ class PipelineLogger:
     @staticmethod
     def maybe_round(value: float, ndigits: Optional[int]) -> float:
         return value if ndigits is None else round(value, ndigits)
-
-    # def set_id_tag(self) -> None:
-    #     if (
-    #         active_run := mlflow.active_run()
-    #     ) and active_run.info.run_id == self._run_info.run_id:
-    #         self._mlflowclient.set_tag(
-    #             run_id=self._run_info.run_id, key="id", value=self._pipeline.id
-    #         )
-    #     else:
-    #         with mlflow.start_run(
-    #             run_id=self._run_info.run_id,
-    #             run_name="Pipeline",
-    #             nested=False,
-    #         ):
-    #             self._mlflowclient.set_tag(
-    #                 run_id=self._run_info.run_id, key="id", value=self._pipeline.id
-    #             )
