@@ -6,7 +6,71 @@ import mlflow.entities
 from mlflow.entities import RunStatus
 
 from getml_mlflow import logging
+from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetrics
+
+# TODO: predict
+# TODO: transform
+
+
+class Run:
+    def __init__(
+        self, pipeline: getml.Pipeline, mlflowclient: mlflow.MlflowClient, name: str
+    ) -> None:
+        self._pipeline: getml.Pipeline = pipeline
+        self._mlflowclient: mlflow.MlflowClient = mlflowclient
+        self._run: Optional[mlflow.entities.Run] = None
+        self._name: str = name
+
+    def __enter__(self) -> "Run":
+        create_run_args: dict = {
+            "experiment_id": self._experiment_id(),
+            "run_name": self._name,
+            "tags": {"id": self._pipeline.id},
+        }
+        if parent_run_id := self._parent_run_id():
+            create_run_args["tags"].update(
+                {
+                    "mlflow.parentRunId": parent_run_id,
+                }
+            )
+        self._run = self._mlflowclient.create_run(**create_run_args)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self._mlflowclient.set_terminated(
+            self.id, status=RunStatus.to_string(RunStatus.FINISHED)
+        )
+
+    def _experiment_id(self) -> str:
+        if run_info := getattr(self._pipeline, "_mlflow_run_info"):
+            print(f"Run Info: {run_info}")
+            print(f"Via Pipeline Run Experiment ID: {run_info.experiment_id}")
+            return run_info.experiment_id
+        else:
+            project_name: str = getml.project.name
+            if experiment := mlflow.get_experiment_by_name(project_name):
+                print(f"Experiment: {experiment}")
+                print(f"Via Project Experiment ID: {experiment.experiment_id}")
+                return experiment.experiment_id
+
+            raise LookupError(f"MLflow Experiment '{project_name}' not found")
+
+    def _parent_run_id(self) -> Optional[str]:
+        if run_info := getattr(self._pipeline, "_mlflow_run_info"):
+            return run_info.run_id
+
+        return None
+
+    @property
+    def id(self) -> str:
+        assert self._run, "RUN is missing. Make sure to be inside a context manager."
+        return self._run.info.run_id
+
+    @property
+    def info(self) -> mlflow.entities.RunInfo:
+        assert self._run, "RUN is missing. Make sure to be inside a context manager."
+        return self._run.info
 
 
 def init(original: Callable, pipeline: getml.Pipeline, *args, **kwargs):
@@ -18,85 +82,8 @@ def init(original: Callable, pipeline: getml.Pipeline, *args, **kwargs):
     init_method(pipeline, *args, **kwargs)
 
 
-# TODO: predict
-# TODO: transform
-
-
-class PipelineRun:
-    __slots__ = ["_pipeline", "_mlflowclient", "_run", "_experiment"]
-
-    def __init__(
-        self, _pipeline: getml.Pipeline, mlflowclient: mlflow.MlflowClient
-    ) -> None:
-        self._pipeline: getml.Pipeline = _pipeline
-        self._mlflowclient: mlflow.MlflowClient = mlflowclient
-        self._run: Optional[mlflow.entities.Run] = None
-        experiment: Optional[mlflow.entities.Experiment] = (
-            mlflow.get_experiment_by_name(getml.project.name)
-        )
-        if experiment is None:
-            raise LookupError(f"MLflow Experiment '{getml.project.name}' not found")
-        self._experiment: mlflow.entities.Experiment = experiment
-
-    def __enter__(self) -> "PipelineRun":
-        self._run = self._mlflowclient.create_run(
-            experiment_id=self._experiment.experiment_id, run_name=self._run_name()
-        )
-        setattr(self._pipeline, "_mlflow_run_info", self._run.info)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        self._mlflowclient.update_run(
-            run_id=self.id, status="FINISHED", name=self._run_name()
-        )
-        self._run = None
-
-    def _run_name(self) -> str:
-        return "Pipeline-{}".format(self._pipeline.id.replace(" ", "_"))
-
-    @property
-    def id(self) -> str:
-        assert self._run, "RUN is missing. Make sure to be inside a context manager."
-        return self._run.info.run_id
-
-    @property
-    def run(self) -> mlflow.entities.Run:
-        assert self._run, "RUN is missing. Make sure to be inside a context manager."
-        return self._run
-
-
-class PipelineSubRun:
-    __slots__ = ["_mlflowclient", "_run", "_run_name", "_parent_run_info"]
-
-    def __init__(
-        self,
-        parent_run_info: mlflow.entities.RunInfo,
-        run_name: str,
-        mlflowclient: mlflow.MlflowClient,
-    ) -> None:
-        self._parent_run_info: mlflow.entities.RunInfo = parent_run_info
-        self._mlflowclient: mlflow.MlflowClient = mlflowclient
-        self._run_name: str = run_name
-        self._run: Optional[mlflow.entities.Run] = None
-
-    def __enter__(self) -> "PipelineSubRun":
-        self._run = self._mlflowclient.create_run(
-            experiment_id=self._parent_run_info.experiment_id,
-            tags={"mlflow.parentRunId": self._parent_run_info.run_id},
-            run_name=self._run_name,
-        )
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        self._mlflowclient.set_terminated(
-            self.id, status=RunStatus.to_string(RunStatus.FINISHED)
-        )
-        self._run = None
-
-    @property
-    def id(self) -> str:
-        assert self._run, "RUN is missing. Make sure to be inside a context manager."
-        return self._run.info.run_id
+def pipeline_name(pipeline: getml.Pipeline) -> str:
+    return "Pipeline-{}".format(pipeline.id.replace(" ", "_"))
 
 
 def fit(
@@ -114,16 +101,21 @@ def fit(
     ] = None,
     check: bool = True,
     mlflowclient: Optional[mlflow.MlflowClient] = None,
-):
+) -> getml.Pipeline:
     mlflowclient = mlflowclient or mlflow.MlflowClient()
     fit_method: Callable = original
 
-    with PipelineRun(_pipeline=pipeline, mlflowclient=mlflowclient) as pipeline_run:
-        with PipelineSubRun(
-            parent_run_info=pipeline_run.run.info,
-            run_name="fit",
-            mlflowclient=mlflowclient,
-        ) as fit_run:
+    with Run(
+        pipeline=pipeline, mlflowclient=mlflowclient, name=pipeline_name(pipeline)
+    ) as run:
+        setattr(pipeline, "_mlflow_run_info", run.info)
+        pipeline_logger: PipelineLogger = PipelineLogger.of_autolog(
+            pipeline, mlflowclient
+        )
+        pipeline_logger.log_parameters()
+        pipeline_logger.log_tags()
+
+        with Run(pipeline=pipeline, mlflowclient=mlflowclient, name="fit") as fit_run:
             logging.table.log_table(population_table, "Population")
             if peripheral_tables is not None:
                 logging.table.log_peripheral_tables(peripheral_tables)
@@ -139,12 +131,14 @@ def fit(
                     check,
                 )
 
-            logging.pipeline.log_metrics(pipeline, fit_run.id)
             mlflowclient.set_tag(fit_run.id, "id", pipeline.id)
+            pipeline_logger.log_metrics()
 
-        mlflowclient.set_tag(pipeline_run.id, "id", pipeline.id)
-        logging.pipeline.log_parameters(pipeline, pipeline_run.id)
-        logging.pipeline.log_tags(pipeline)
+        mlflowclient.set_tag(run.id, "id", pipeline.id)
+        mlflowclient.update_run(
+            run_id=run.id,
+            name=pipeline_name(pipeline),
+        )
 
     return fit_output
 
@@ -164,11 +158,7 @@ def score(
     score_method: Callable = original
     mlflowclient = mlflowclient or mlflow.MlflowClient()
 
-    with PipelineSubRun(
-        parent_run_info=getattr(pipeline, "_mlflow_run_info"),
-        run_name="score",
-        mlflowclient=mlflowclient,
-    ) as score_run:
+    with Run(pipeline=pipeline, mlflowclient=mlflowclient, name="score") as run:
         logging.table.log_table(population_table, "Population")
         if peripheral_tables is not None:
             logging.table.log_peripheral_tables(peripheral_tables)
@@ -176,8 +166,7 @@ def score(
         score_output: getml.pipeline.Scores = score_method(
             pipeline, population_table, peripheral_tables
         )
-        logging.pipeline.log_metrics(pipeline, score_run.id)
-        mlflowclient.set_tag(score_run.id, "id", pipeline.id)
+        PipelineLogger.of_autolog(pipeline, mlflowclient).log_metrics()
 
     return score_output
 

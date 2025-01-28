@@ -1,9 +1,12 @@
 import json
 from dataclasses import fields, is_dataclass
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, List, Literal, Optional
 
 import getml
 import mlflow
+import mlflow.entities
+from mlflow.entities import Metric, Param, RunTag
+from mlflow.utils.time import get_current_time_millis
 
 PARAMETER_NAMES = (
     "preprocessors",
@@ -16,110 +19,146 @@ PARAMETER_NAMES = (
 )
 
 
-def log_parameters(pipeline: getml.Pipeline, run_id: str) -> None:
-    parameters = {}
+class PipelineLogger:
+    @classmethod
+    def of_autolog(cls, pipeline: getml.Pipeline, mlflowclient: mlflow.MlflowClient):
+        return cls(pipeline, mlflowclient, getattr(pipeline, "_mlflow_run_info"))
 
-    for parameter_name in PARAMETER_NAMES:
-        parameter = getattr(pipeline, parameter_name)
-        if is_dataclass(type(parameter)):
-            parameters.update(_serialize_dataclass(parameter_name, parameter))
-        elif isinstance(parameter, list):
-            for id, item in enumerate(parameter):
-                parameters.update(_serialize_dataclass(f"{parameter_name}.{id}", item))
-        elif isinstance(parameter, (str, int, float, bool, Literal)):
-            parameters[parameter_name] = parameter
-        else:
-            parameters[parameter_name] = str(parameter)
+    def __init__(
+        self,
+        pipeline: getml.Pipeline,
+        mlflowclient: mlflow.MlflowClient,
+        run_info: mlflow.entities.RunInfo,
+    ) -> None:
+        self._pipeline: getml.Pipeline = pipeline
+        self._mlflowclient: mlflow.MlflowClient = mlflowclient
+        self._run_info: mlflow.entities.RunInfo = run_info
 
-    mlflow.log_params(params=parameters, run_id=run_id)
+    def log_parameters(self) -> None:
+        parameters: List[Param] = []
 
+        for parameter_name in PARAMETER_NAMES:
+            parameter = getattr(self._pipeline, parameter_name)
+            if is_dataclass(type(parameter)):
+                parameters.extend(self._serialize_dataclass(parameter_name, parameter))
+            elif isinstance(parameter, list):
+                for id, item in enumerate(parameter):
+                    parameters.extend(
+                        self._serialize_dataclass(f"{parameter_name}.{id}", item)
+                    )
+            elif isinstance(parameter, (str, int, float, bool, Literal)):
+                parameters.append(Param(parameter_name, str(parameter)))
+            else:
+                parameters.append(Param(parameter_name, str(parameter)))
 
-def _serialize_dataclass(name: str, parameter: Any) -> Dict[str, Any]:
-    parameters: Dict[str, Any] = {}
+        self._mlflowclient.log_batch(run_id=self._run_info.run_id, params=parameters)
 
-    current_name: str = parameter.__class__.__name__
-    for field in fields(parameter):
-        full_field_name: str = f"{name}.{current_name}.{field.name}"
-        field_value: Any = getattr(parameter, field.name)
-        if is_dataclass(field.type):
-            parameters.update(_serialize_dataclass(full_field_name, field_value))
-        else:
-            parameters[full_field_name] = _serialize_field_value(field_value)
+    def _serialize_dataclass(self, name: str, parameter: Any) -> List[Param]:
+        parameters: List[Param] = []
 
-    return parameters
+        current_name: str = parameter.__class__.__name__
+        for field in fields(parameter):
+            full_field_name: str = f"{name}.{current_name}.{field.name}"
+            field_value: Any = getattr(parameter, field.name)
+            if is_dataclass(field.type):
+                parameters.extend(
+                    self._serialize_dataclass(full_field_name, field_value)
+                )
+            else:
+                parameters.append(
+                    Param(full_field_name, self._serialize_field_value(field_value))
+                )
 
+        return parameters
 
-@staticmethod
-def _serialize_field_value(field_value: Any) -> str:
-    if isinstance(field_value, (frozenset, set)):
-        return json.dumps(sorted(field_value))
-    if not isinstance(field_value, str):
-        return json.dumps(field_value)
-    return field_value
+    def _serialize_field_value(self, field_value: Any) -> str:
+        if isinstance(field_value, (frozenset, set)):
+            return json.dumps(sorted(field_value))
+        if not isinstance(field_value, str):
+            return json.dumps(field_value)
+        return field_value
 
+    def log_tags(self) -> None:
+        tags: List[RunTag] = [RunTag("id", self._pipeline.id)]
+        for tag in map(str, self._pipeline.tags):
+            if ":" in tag:
+                key, value = tag.split(":")
+                tags.append(RunTag(key.strip(), value.strip()))
+            else:
+                tags.append(RunTag(tag, tag))
 
-@staticmethod
-def log_tags(pipeline: getml.Pipeline) -> None:
-    tags: Dict[str, str] = {"id": pipeline.id}
-    for tag in map(str, pipeline.tags):
-        if ":" in tag:
-            key, value = tag.split(":")
-            tags[key.strip()] = value.strip()
-        else:
-            tags[tag] = tag
-    mlflow.set_tags(tags=tags)
+        self._mlflowclient.log_batch(run_id=self._run_info.run_id, tags=tags)
 
+    def log_metrics(self) -> None:
+        metrics: List[Metric] = []
 
-def log_metrics(pipeline: getml.Pipeline, run_id: str) -> None:
-    metrics = {}
+        scores = self._pipeline.scores
 
-    scores = pipeline.scores
+        if self._pipeline.is_classification:
+            metrics.extend(self._serialize_metric("auc", scores.auc, 2))
+            metrics.extend(self._serialize_metric("accuracy", scores.accuracy, 2))
+            metrics.extend(
+                self._serialize_metric("cross_entropy", scores.cross_entropy, 4)
+            )
 
-    if pipeline.is_classification:
-        metrics.update(_serialize_metric("auc", scores.auc, 2))
-        metrics.update(_serialize_metric("accuracy", scores.accuracy, 2))
-        metrics.update(_serialize_metric("cross_entropy", scores.cross_entropy, 4))
+        if self._pipeline.is_regression:
+            metrics.extend(self._serialize_metric("mae", scores.mae))
+            metrics.extend(self._serialize_metric("rmse", scores.rmse))
+            metrics.extend(self._serialize_metric("rsquared", scores.rsquared, 2))
 
-    if pipeline.is_regression:
-        metrics.update(_serialize_metric("mae", scores.mae))
-        metrics.update(_serialize_metric("rmse", scores.rmse))
-        metrics.update(_serialize_metric("rsquared", scores.rsquared, 2))
+        # TODO: Add feature importance and correlation
+        # for feature in pipeline.features:
+        #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
+        #     metrics[f"{feature.name}.correlation"] = json.dumps(feature.correlation)
 
-    # TODO: Add feature importance and correlation
-    # for feature in pipeline.features:
-    #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
-    #     metrics[f"{feature.name}.correlation"] = json.dumps(feature.correlation)
+        # if len(pipeline.targets) == 1:
+        #     metrics["targets"] = getml_pipeline.targets[0]
+        # else:
+        #     for i, t in enumerate(getml_pipeline.targets):
+        #         metrics[f"targets.{i}"] = t
 
-    # if len(pipeline.targets) == 1:
-    #     metrics["targets"] = getml_pipeline.targets[0]
-    # else:
-    #     for i, t in enumerate(getml_pipeline.targets):
-    #         metrics[f"targets.{i}"] = t
+        self._mlflowclient.log_batch(run_id=self._run_info.run_id, metrics=metrics)
 
-    mlflow.log_metrics(metrics=metrics, run_id=run_id)
+    def _serialize_metric(
+        self, name: str, values: float | List[float], ndigits: Optional[int] = None
+    ) -> List[Metric]:
+        timestamp: int = get_current_time_millis()
+        if isinstance(values, list):
+            return [
+                Metric(
+                    key=f"name.{id}",
+                    value=self.maybe_round(value, ndigits),
+                    timestamp=timestamp,
+                    step=0,
+                )
+                for id, value in enumerate(values)
+            ]
+        return [
+            Metric(
+                key=name,
+                value=self.maybe_round(values, ndigits),
+                timestamp=timestamp,
+                step=0,
+            )
+        ]
 
+    @staticmethod
+    def maybe_round(value: float, ndigits: Optional[int]) -> float:
+        return value if ndigits is None else round(value, ndigits)
 
-def _serialize_metric(
-    name: str, values: float | List[float], ndigits: Optional[int] = None
-) -> Dict[str, float]:
-    if isinstance(values, list):
-        return {
-            f"name.{id}": maybe_round(value, ndigits) for id, value in enumerate(values)
-        }
-    return {name: maybe_round(values, ndigits)}
-
-
-def maybe_round(value: float, ndigits: Optional[int]) -> float:
-    return value if ndigits is None else round(value, ndigits)
-
-
-def set_id_tag(pipeline: getml.Pipeline, run_id: str) -> None:
-    if (active_run := mlflow.active_run()) and active_run.info.run_id == run_id:
-        mlflow.set_tag(key="id", value=pipeline.id)
-    else:
-        with mlflow.start_run(
-            run_id=run_id,
-            run_name="Pipeline",
-            nested=False,
-        ):
-            mlflow.set_tag(key="id", value=pipeline.id)
+    # def set_id_tag(self) -> None:
+    #     if (
+    #         active_run := mlflow.active_run()
+    #     ) and active_run.info.run_id == self._run_info.run_id:
+    #         self._mlflowclient.set_tag(
+    #             run_id=self._run_info.run_id, key="id", value=self._pipeline.id
+    #         )
+    #     else:
+    #         with mlflow.start_run(
+    #             run_id=self._run_info.run_id,
+    #             run_name="Pipeline",
+    #             nested=False,
+    #         ):
+    #             self._mlflowclient.set_tag(
+    #                 run_id=self._run_info.run_id, key="id", value=self._pipeline.id
+    #             )

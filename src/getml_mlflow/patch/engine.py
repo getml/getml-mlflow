@@ -9,8 +9,10 @@ def set_project(
     name: str,
     mlflowclient: Optional[mlflow.MlflowClient] = None,
 ) -> None:
+    mlflowclient = mlflowclient or mlflow.MlflowClient()
     set_project_method: Callable = original
+
     set_project_method(name)
-    if not mlflow.search_experiments(filter_string=f"name='{name}'"):
-        mlflow.create_experiment(name=name)
-    mlflow.set_experiment(experiment_name=name)
+
+    if not mlflowclient.search_experiments(filter_string=f"name='{name}'"):
+        mlflowclient.create_experiment(name=name)
