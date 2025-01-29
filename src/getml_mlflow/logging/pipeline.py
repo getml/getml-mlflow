@@ -89,7 +89,7 @@ class PipelineLogger:
 
         self._mlflowclient.log_batch(run_id=self._run_info.run_id, tags=tags)
 
-    def log_metrics(self, run_id: Optional[str] = None) -> None:
+    def log_scores(self, run_id: Optional[str] = None) -> None:
         run_id = run_id or self._run_info.run_id
         metrics: List[Metric] = []
 
@@ -107,18 +107,23 @@ class PipelineLogger:
             metrics.extend(self._serialize_metric("rmse", scores.rmse))
             metrics.extend(self._serialize_metric("rsquared", scores.rsquared, 2))
 
-        # TODO: Add feature importance and correlation
+        self._mlflowclient.log_batch(run_id=run_id, metrics=metrics)
+
+    # TODO: Add feature importance and correlation
+    def log_features(self, run_id: Optional[str] = None) -> None:
         # for feature in pipeline.features:
         #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
         #     metrics[f"{feature.name}.correlation"] = json.dumps(feature.correlation)
+        pass
 
+    # TODO: Add feature importance and correlation
+    def log_targets(self, run_id: Optional[str] = None) -> None:
         # if len(pipeline.targets) == 1:
         #     metrics["targets"] = getml_pipeline.targets[0]
         # else:
         #     for i, t in enumerate(getml_pipeline.targets):
         #         metrics[f"targets.{i}"] = t
-
-        self._mlflowclient.log_batch(run_id=run_id, metrics=metrics)
+        pass
 
     def _serialize_metric(
         self, name: str, values: float | List[float], ndigits: Optional[int] = None

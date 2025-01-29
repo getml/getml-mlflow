@@ -4,16 +4,14 @@ import getml
 import mlflow
 import mlflow.entities
 import numpy
-from mlflow.entities import RunStatus
+from mlflow.entities import Param, RunStatus
 from numpy.typing import NDArray
 
+from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetrics
-
-# TODO: predict
-# TODO: transform
 
 
 class Run:
@@ -88,16 +86,14 @@ def pipeline_name(pipeline: getml.Pipeline) -> str:
 def fit(
     original: Callable,
     pipeline: getml.Pipeline,
-    population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
+    population_table: Union[DataFrameLike, getml.data.Subset],
     peripheral_tables: Optional[
         Union[
-            Sequence[Union[getml.DataFrame, getml.data.View]],
-            dict[str, Union[getml.DataFrame, getml.data.View]],
+            Sequence[DataFrameLike],
+            dict[str, DataFrameLike],
         ]
     ] = None,
-    validation_table: Optional[
-        Union[getml.DataFrame, getml.data.View, getml.data.Subset]
-    ] = None,
+    validation_table: Optional[Union[DataFrameLike, getml.data.Subset]] = None,
     check: bool = True,
     mlflowclient: Optional[mlflow.MlflowClient] = None,
 ) -> getml.Pipeline:
@@ -136,7 +132,7 @@ def fit(
                 )
 
             mlflowclient.set_tag(fit_run.id, "id", pipeline.id)
-            pipeline_logger.log_metrics(run_id=fit_run.id)
+            pipeline_logger.log_scores(run_id=fit_run.id)
 
         mlflowclient.set_tag(run.id, "id", pipeline.id)
         mlflowclient.update_run(
@@ -150,11 +146,11 @@ def fit(
 def score(
     original: Callable,
     pipeline: getml.Pipeline,
-    population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
+    population_table: Union[DataFrameLike, getml.data.Subset],
     peripheral_tables: Optional[
         Union[
-            Sequence[Union[getml.DataFrame, getml.data.View]],
-            Dict[str, Union[getml.DataFrame, getml.data.View]],
+            Sequence[DataFrameLike],
+            Dict[str, DataFrameLike],
         ]
     ] = None,
     mlflowclient: Optional[mlflow.MlflowClient] = None,
@@ -173,7 +169,7 @@ def score(
         score_output: getml.pipeline.Scores = score_method(
             pipeline, population_table, peripheral_tables
         )
-        PipelineLogger.of_autolog(pipeline, mlflowclient).log_metrics(
+        PipelineLogger.of_autolog(pipeline, mlflowclient).log_scores(
             run_id=score_run.id
         )
 
@@ -183,11 +179,11 @@ def score(
 def predict(
     original: Callable,
     pipeline: getml.Pipeline,
-    population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
+    population_table: Union[DataFrameLike, getml.data.Subset],
     peripheral_tables: Optional[
         Union[
-            Sequence[Union[getml.DataFrame, getml.data.View]],
-            Dict[str, Union[getml.DataFrame, getml.data.View]],
+            Sequence[DataFrameLike],
+            Dict[str, DataFrameLike],
         ]
     ] = None,
     table_name: str = "",
@@ -215,59 +211,65 @@ def predict(
         )
         if predict_output is not None:
             NumpyLogger(mlflowclient, predict_run.id).log_ndarray_as_artifact(
-                predict_output,
-                f"pipeline.{pipeline.id}.predict.npy",
+                data=predict_output,
+                name="predict_output",
             )
         PipelineLogger.of_autolog(
             pipeline=pipeline, mlflowclient=mlflowclient
-        ).log_metrics(run_id=predict_run.id)
+        ).log_scores(run_id=predict_run.id)
 
     return predict_output
 
 
-# def transform(
-#     original: Callable,
-#     pipeline: getml.Pipeline,
-#     population_table: Union[getml.DataFrame, getml.data.View, getml.data.Subset],
-#     peripheral_tables: Optional[
-#         Union[
-#             Sequence[Union[getml.DataFrame, getml.data.View]],
-#             Dict[str, Union[getml.DataFrame, getml.data.View]],
-#         ]
-#     ] = None,
-#     df_name: str = "",
-#     table_name: str = "",
-# ) -> Union[getml.DataFrame, NDArray[numpy.float_], None]:
-#     transform_method: Callable = original
-#     pipeline_run_id = getattr(pipeline, "mlflow_run_id")
-#
-#     # TODO: Add tags
-#     # TODO: Add description
-#     with mlflow.start_run(
-#         run_name="transform",
-#         nested=True,
-#         parent_run_id=pipeline_run_id,
-#     ) as transform_run:
-#         run_id = transform_run.info.run_id
-#
-#         logging.table.log_table(population_table, "Population")
-#         if peripheral_tables is not None:
-#             logging.table.log_peripheral_tables(peripheral_tables)
-#         mlflow.log_param("df_name", df_name)
-#         mlflow.log_param("table_name", table_name)
-#
-#         transform_output: Union[getml.DataFrame, NDArray[numpy.float_], None] = (
-#             transform_method(pipeline, population_table, peripheral_tables)
-#         )
-#         if transform_output is not None:
-#             if isinstance(transform_output, getml.DataFrame):
-#                 logging.table.log_table_as_artifact(transform_output, df_name)
-#             elif isinstance(transform_output, numpy.ndarray):
-#                 logging.numpy.log_ndarray_as_artifact(
-#                     transform_output, f"pipeline.{pipeline.id}.transform.npy"
-#                 )
-#         logging.pipeline.log_metrics(pipeline, run_id)
-#         mlflow.set_tag(key="id", value=pipeline.id)
-#
-#         return transform_output
-#
+def transform(
+    original: Callable,
+    pipeline: getml.Pipeline,
+    population_table: Union[DataFrameLike, getml.data.Subset],
+    peripheral_tables: Optional[
+        Union[
+            Sequence[DataFrameLike],
+            Dict[str, DataFrameLike],
+        ]
+    ] = None,
+    df_name: str = "",
+    table_name: str = "",
+    mlflowclient: Optional[mlflow.MlflowClient] = None,
+) -> Union[getml.DataFrame, NDArray[numpy.float_], None]:
+    mlflowclient = mlflowclient or mlflow.MlflowClient()
+    transform_method: Callable = original
+
+    with Run(
+        pipeline=pipeline,
+        mlflowclient=mlflowclient,
+        name="transform",
+    ) as transform_run:
+        data_container_logger: DataContainerLogger = DataContainerLogger(
+            mlflowclient, transform_run.id
+        )
+        data_container_logger.log_data_container(population_table, "Population")
+        if peripheral_tables is not None:
+            data_container_logger.log_data_containers(peripheral_tables, "Peripheral")
+        mlflowclient.log_batch(
+            transform_run.id,
+            params=[Param("df_name", df_name), Param("table_name", table_name)],
+        )
+
+        transform_output: Union[getml.DataFrame, NDArray[numpy.float_], None] = (
+            transform_method(pipeline, population_table, peripheral_tables)
+        )
+        if transform_output is not None:
+            if isinstance(transform_output, getml.DataFrame):
+                # TODO: Implement logging of getML DataFrames
+                # logging.table.log_table_as_artifact(transform_output, df_name)
+                pass
+            elif isinstance(transform_output, numpy.ndarray):
+                NumpyLogger(mlflowclient, transform_run.id).log_ndarray_as_artifact(
+                    data=transform_output,
+                    name="transform_output",
+                )
+
+        PipelineLogger.of_autolog(pipeline, mlflowclient).log_scores(
+            run_id=transform_run.id
+        )
+
+    return transform_output

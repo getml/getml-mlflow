@@ -1,4 +1,4 @@
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory
 
 import mlflow
 import numpy
@@ -13,12 +13,15 @@ class NumpyLogger:
     def log_ndarray_as_artifact(
         self,
         data: NDArray[numpy.float_],
-        artifact_path: str,
+        name: str,
+        artifact_path: str = "",
     ):
-        with NamedTemporaryFile(suffix=".npy") as temp_file:
-            numpy.save(temp_file, data)
+        with TemporaryDirectory() as temp_dir:
+            filename = f"{name}.npy"
+            local_path: str = f"{temp_dir}/{filename}"
+            numpy.save(local_path, data)
             self._mlflowclient.log_artifact(
                 run_id=self._run_id,
-                local_path=temp_file.name,
+                local_path=local_path,
                 artifact_path=artifact_path,
             )

@@ -36,6 +36,15 @@ def autolog(
     mlflowclient = mlflow.MlflowClient()
     getml_mlflow.logging.logger.set_up()
 
+    for destination in (getml, getml.engine, getml.engine.helpers):
+        safe_patch(
+            autologging_integration=FLAVOR_NAME,
+            destination=destination,
+            function_name="set_project",
+            patch_function=with_mlflowclient(mlflowclient)(engine.set_project),
+            manage_run=False,
+        )
+
     safe_patch(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
@@ -64,19 +73,18 @@ def autolog(
         manage_run=False,
     )
 
-    for destination in (getml, getml.engine, getml.engine.helpers):
-        safe_patch(
-            autologging_integration=FLAVOR_NAME,
-            destination=destination,
-            function_name="set_project",
-            patch_function=with_mlflowclient(mlflowclient)(engine.set_project),
-            manage_run=False,
-        )
-
     safe_patch(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="predict",
         patch_function=with_mlflowclient(mlflowclient)(pipeline.predict),
+        manage_run=False,
+    )
+
+    safe_patch(
+        autologging_integration=FLAVOR_NAME,
+        destination=getml.pipeline.Pipeline,
+        function_name="transform",
+        patch_function=with_mlflowclient(mlflowclient)(pipeline.transform),
         manage_run=False,
     )

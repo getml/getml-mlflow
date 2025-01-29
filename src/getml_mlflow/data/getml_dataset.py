@@ -1,11 +1,13 @@
 import json
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
-import getml
 from mlflow.data.dataset import Dataset
 from mlflow.data.dataset_source import DatasetSource
 from mlflow.types import ColSpec, Schema
 from typing_extensions import override
+
+from getml_mlflow.data import dataframelike
+from getml_mlflow.data.dataframelike import DataFrameLike
 
 
 class GetMLDatasetSource(DatasetSource):
@@ -49,14 +51,14 @@ class GetMLDatasetSource(DatasetSource):
 class GetMLDataset(Dataset):
     def __init__(
         self,
-        dataframe_like: Union[getml.DataFrame, getml.data.View],
+        dataframe_like: DataFrameLike,
         source: Optional[DatasetSource] = None,
         name: Optional[str] = None,
         digest: Optional[str] = None,
     ):
         self._dataframe_like = dataframe_like
         self._name: str = (
-            name if name is not None else self._resolve_name(dataframe_like)
+            name if name is not None else dataframelike.get_name(dataframe_like)
         )
         resolved_source = (
             source if source is not None else self._resolve_source(dataframe_like)
@@ -97,17 +99,7 @@ class GetMLDataset(Dataset):
         print("GetMLDataset.schema")
         return Schema([ColSpec("integer", "a"), ColSpec("float", "b")])
 
-    def _resolve_name(
-        self, dataframe_like: Union[getml.DataFrame, getml.data.View]
-    ) -> str:
-        if isinstance(dataframe_like, getml.DataFrame):
-            return str(dataframe_like.name)
-        else:
-            return f"{dataframe_like.base.name}.{dataframe_like.name}"
-
-    def _resolve_source(
-        self, dataframe_like: Union[getml.DataFrame, getml.data.View]
-    ) -> DatasetSource:
+    def _resolve_source(self, dataframe_like: DataFrameLike) -> DatasetSource:
         # with TemporaryDirectory() as temp_dir:
         #     filename = f"{temp_dir}/{self._name}.parquet"
         #     dataframe_like.to_parquet(filename)
@@ -123,7 +115,7 @@ class GetMLDataset(Dataset):
 
 
 def from_getml(
-    dataframe_like: Union[getml.DataFrame, getml.data.View],
+    dataframe_like: DataFrameLike,
     source: Optional[DatasetSource] = None,
     name: Optional[str] = None,
     digest: Optional[str] = None,
