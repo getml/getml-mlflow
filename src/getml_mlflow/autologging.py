@@ -1,3 +1,4 @@
+import functools
 from typing import Dict, Optional
 
 import getml
@@ -12,6 +13,7 @@ from getml_mlflow.patch import engine, pipeline
 
 def with_mlflowclient(mlflowclient: mlflow.MlflowClient):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs, mlflowclient=mlflowclient)
 
@@ -32,6 +34,8 @@ def autolog(
     disable_for_unsupported_versions: bool = False,
     silent: bool = False,
     extra_tags: Optional[Dict[str, str]] = None,
+    # TODO: Project folder of getml for pipeline logging
+    # TODO: dataset source in getml  vs save as artifact
 ):
     mlflowclient = mlflow.MlflowClient()
     getml_mlflow.logging.logger.set_up()

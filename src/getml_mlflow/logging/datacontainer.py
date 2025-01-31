@@ -1,22 +1,61 @@
+from enum import StrEnum
 from tempfile import TemporaryDirectory
 from typing import Callable, Dict, List, Sequence, Union
 
 import getml
 import mlflow
+import mlflow.data.code_dataset_source
 import mlflow.data.pandas_dataset
+from mlflow.entities import DatasetInput, InputTag
+from mlflow.tracking.context.registry import resolve_tags
+from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
-from getml_mlflow.data import dataframelike
+from getml_mlflow.data import dataframelike, getml_dataset
 from getml_mlflow.data.dataframelike import DataFrameLike
 
 
+class DataContainerLoggerTarget(StrEnum):
+    ARTIFACT = "artifact"
+    INPUT = "input"
+
+
 class DataContainerLogger:
-    def __init__(self, mlflowclient: mlflow.MlflowClient, run_id: str):
+    @classmethod
+    def as_artifact(cls, mlflowclient: mlflow.MlflowClient, run_id: str):
+        return cls(mlflowclient, run_id, DataContainerLoggerTarget.ARTIFACT)
+
+    @classmethod
+    def as_input(cls, mlflowclient: mlflow.MlflowClient, run_id: str):
+        return cls(mlflowclient, run_id, DataContainerLoggerTarget.INPUT)
+
+    def __init__(
+        self,
+        mlflowclient: mlflow.MlflowClient,
+        run_id: str,
+        target: DataContainerLoggerTarget,
+    ):
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
         self._run_id: str = run_id
-        self._seperator: Callable[[], str] = self._artifact_path_seperator
+        self._seperator: Callable[[], str] = self._get_seperator(target)
         self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
-            self._log_dataframe_like_as_artifact
+            self._get_log_dataframe_like(target)
         )
+
+    def _get_seperator(self, target: DataContainerLoggerTarget):
+        if target == DataContainerLoggerTarget.ARTIFACT:
+            return self._artifact_path_seperator
+        elif target == DataContainerLoggerTarget.INPUT:
+            return self._input_context_seperator
+        else:
+            raise ValueError(f"Unknown target: {target}")
+
+    def _get_log_dataframe_like(self, target: DataContainerLoggerTarget):
+        if target == DataContainerLoggerTarget.ARTIFACT:
+            return self._log_dataframe_like_as_artifact
+        elif target == DataContainerLoggerTarget.INPUT:
+            return self._log_dataframe_like_as_input
+        else:
+            raise ValueError(f"Unknown target: {target}")
 
     def log_data_containers(
         self,
@@ -48,18 +87,22 @@ class DataContainerLogger:
     def _log_dataframe_like_as_input(
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
-        # name: str = str(
-        #     table.name
-        #     if isinstance(table, getml.DataFrame)
-        #     else f"{table.name}.{table.base.name}"
-        # )
-        # dataset: PandasDataset = mlflow.data.pandas_dataset.from_pandas(
-        #     table.to_pandas(), name=name
-        # )
+        dataset_input: DatasetInput = DatasetInput(
+            dataset=getml_dataset.GetMLDataset(
+                dataframe_like,
+                source=mlflow.data.code_dataset_source.CodeDatasetSource(
+                    resolve_tags()
+                ),
+            )._to_mlflow_entity(),
+            tags=[
+                InputTag(
+                    key=MLFLOW_DATASET_CONTEXT, value=self._seperator().join(context)
+                )
+            ],
+        )
         self._mlflowclient.log_inputs(
             run_id=self._run_id,
-            datasets=[],  # from_getml(dataframe_like)],
-            # tags={MLFLOW_DATASET_CONTEXT: context},
+            datasets=[dataset_input],
         )
 
     def _log_dataframe_like_as_artifact(

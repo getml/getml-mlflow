@@ -1,7 +1,8 @@
 import logging
 import threading
 from enum import StrEnum
-from typing import Dict, List, Optional
+from types import TracebackType
+from typing import Dict, List, Optional, Type
 
 import mlflow
 import mlflow.entities
@@ -97,7 +98,23 @@ class SystemMetrics:
         self._thread.start()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ):
+        if exc_type is not None and exc_val is not None:
+            self._mlflowclient.log_text(
+                run_id=self._run_id,
+                text=f"Exception: {exc_type}: {exc_val}",
+                artifact_file="error.log",
+            )
+            logging.getLogger("getML").error(
+                f"Exception: {exc_type}: {exc_val}",
+                exc_info=(exc_type, exc_val, exc_tb),
+            )
+
         self._event.set()
         if self._thread is not None:
             self._thread.join()

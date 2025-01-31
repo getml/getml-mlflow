@@ -1,6 +1,8 @@
 import json
+import logging
 from dataclasses import fields, is_dataclass
-from typing import Any, List, Literal, Optional
+from types import TracebackType
+from typing import Any, List, Literal, Optional, Type
 
 import getml
 import mlflow
@@ -20,19 +22,47 @@ PARAMETER_NAMES = (
 
 
 class PipelineLogger:
-    @classmethod
-    def of_autolog(cls, pipeline: getml.Pipeline, mlflowclient: mlflow.MlflowClient):
-        return cls(pipeline, mlflowclient, getattr(pipeline, "_mlflow_run_info"))
-
     def __init__(
         self,
-        pipeline: getml.Pipeline,
         mlflowclient: mlflow.MlflowClient,
-        run_info: mlflow.entities.RunInfo,
+        run_id: str,
+        pipeline: getml.Pipeline,
     ) -> None:
-        self._pipeline: getml.Pipeline = pipeline
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
-        self._run_info: mlflow.entities.RunInfo = run_info
+        self._run_id: str = run_id
+        self._pipeline: getml.Pipeline = pipeline
+
+    def log_given_information(self) -> None:
+        self.log_parameters()
+        self.log_tags()
+
+    def log_generated_information(self) -> None:
+        self.log_scores()
+        self.log_features()
+        self.log_targets()
+
+    def __enter__(self) -> "PipelineLogger":
+        self.log_given_information()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        if exc_type is not None and exc_val is not None:
+            self._mlflowclient.log_text(
+                run_id=self._run_id,
+                text=f"Exception: {exc_type}: {exc_val}",
+                artifact_file="error.log",
+            )
+            logging.getLogger("getML").error(
+                f"Exception: {exc_type}: {exc_val}",
+                exc_info=(exc_type, exc_val, exc_tb),
+            )
+        else:
+            self.log_generated_information()
 
     def log_parameters(self) -> None:
         parameters: List[Param] = []
@@ -51,7 +81,7 @@ class PipelineLogger:
             else:
                 parameters.append(Param(parameter_name, str(parameter)))
 
-        self._mlflowclient.log_batch(run_id=self._run_info.run_id, params=parameters)
+        self._mlflowclient.log_batch(run_id=self._run_id, params=parameters)
 
     def _serialize_dataclass(self, name: str, parameter: Any) -> List[Param]:
         parameters: List[Param] = []
@@ -87,10 +117,9 @@ class PipelineLogger:
             else:
                 tags.append(RunTag(tag, tag))
 
-        self._mlflowclient.log_batch(run_id=self._run_info.run_id, tags=tags)
+        self._mlflowclient.log_batch(run_id=self._run_id, tags=tags)
 
-    def log_scores(self, run_id: Optional[str] = None) -> None:
-        run_id = run_id or self._run_info.run_id
+    def log_scores(self) -> None:
         metrics: List[Metric] = []
 
         scores = self._pipeline.scores
@@ -107,18 +136,18 @@ class PipelineLogger:
             metrics.extend(self._serialize_metric("rmse", scores.rmse))
             metrics.extend(self._serialize_metric("rsquared", scores.rsquared, 2))
 
-        self._mlflowclient.log_batch(run_id=run_id, metrics=metrics)
+        self._mlflowclient.log_batch(run_id=self._run_id, metrics=metrics)
 
     # TODO: Add feature importance and correlation
-    def log_features(self, run_id: Optional[str] = None) -> None:
-        # for feature in pipeline.features:
+    def log_features(self) -> None:
+        # for feature in self._pipeline.features:
         #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
         #     metrics[f"{feature.name}.correlation"] = json.dumps(feature.correlation)
         pass
 
     # TODO: Add feature importance and correlation
-    def log_targets(self, run_id: Optional[str] = None) -> None:
-        # if len(pipeline.targets) == 1:
+    def log_targets(self) -> None:
+        # if len(self._pipeline.targets) == 1:
         #     metrics["targets"] = getml_pipeline.targets[0]
         # else:
         #     for i, t in enumerate(getml_pipeline.targets):
