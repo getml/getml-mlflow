@@ -1,14 +1,14 @@
 import json
 from dataclasses import fields, is_dataclass
 from types import TracebackType
-from typing import Any, List, Literal, Optional, Type
+from typing import Any, Dict, List, Literal, Optional, Type, Union
 
-import getml
 import mlflow
 import mlflow.entities
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 
+import getml
 from getml_mlflow.logging.logger import log_exit_exception
 
 
@@ -40,6 +40,7 @@ class PipelineLogger:
     def log_generated_information(self) -> None:
         self.log_scores()
         self.log_features()
+        self.log_columns()
         self.log_targets()
 
     def __enter__(self) -> "PipelineLogger":
@@ -133,21 +134,37 @@ class PipelineLogger:
 
         self._mlflowclient.log_batch(run_id=self._run_id, metrics=metrics)
 
-    # TODO: Add feature importance and correlation
+    # TODO: Find better way to log and display features
     def log_features(self) -> None:
-        # for feature in self._pipeline.features:
-        #     metrics[f"{feature.name}.importance"] = json.dumps(feature.importance)
-        #     metrics[f"{feature.name}.correlation"] = json.dumps(feature.correlation)
-        pass
+        data: Dict[str, List[Union[int, float, str]]] = {
+            "feature-names": [feature.name for feature in self._pipeline.features],
+            "feature-importances": [
+                feature.importance for feature in self._pipeline.features
+            ],
+            "feature-correlations": [
+                feature.correlation for feature in self._pipeline.features
+            ],
+        }
+        self._mlflowclient.log_table(
+            self._run_id, data, f"output/pipeline.{self._pipeline.id}.features.json"
+        )
+
+    # TODO: Find better way to log and display columns
+    def log_columns(self) -> None:
+        data: Dict[str, List[Union[int, float, str]]] = {
+            "column-names": [column.name for column in self._pipeline.columns],
+            "column-table": [column.table for column in self._pipeline.columns],
+            "column-importances": [
+                column.importance for column in self._pipeline.columns
+            ],
+        }
+        self._mlflowclient.log_table(
+            self._run_id, data, f"output/pipeline.{self._pipeline.id}.columns.json"
+        )
 
     # TODO: Add feature importance and correlation
     def log_targets(self) -> None:
-        # if len(self._pipeline.targets) == 1:
-        #     metrics["targets"] = getml_pipeline.targets[0]
-        # else:
-        #     for i, t in enumerate(getml_pipeline.targets):
-        #         metrics[f"targets.{i}"] = t
-        pass
+        self._mlflowclient.log_param(self._run_id, "targets", self._pipeline.targets)
 
     def _serialize_metric(
         self, name: str, values: float | List[float], ndigits: Optional[int] = None

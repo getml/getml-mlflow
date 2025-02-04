@@ -175,6 +175,7 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
             "num_rows": nrows if isinstance(nrows, str) else nrows,
             "num_cols": ncols,
             "num_elements": nrows if isinstance(nrows, str) else nrows * ncols,
+            "base_name": dataframelike.get_dataframe_name(self._dataframe_like),
         }
 
     @property
