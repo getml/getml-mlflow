@@ -1,5 +1,4 @@
 import json
-import logging
 from dataclasses import fields, is_dataclass
 from types import TracebackType
 from typing import Any, List, Literal, Optional, Type
@@ -10,18 +9,20 @@ import mlflow.entities
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 
-PARAMETER_NAMES = (
-    "preprocessors",
-    "feature_learners",
-    "feature_selectors",
-    "predictors",
-    "loss_function",
-    "include_categorical",
-    "share_selected_features",
-)
+from getml_mlflow.logging.logger import log_exit_exception
 
 
 class PipelineLogger:
+    PARAMETER_NAMES = (
+        "preprocessors",
+        "feature_learners",
+        "feature_selectors",
+        "predictors",
+        "loss_function",
+        "include_categorical",
+        "share_selected_features",
+    )
+
     def __init__(
         self,
         mlflowclient: mlflow.MlflowClient,
@@ -48,18 +49,12 @@ class PipelineLogger:
     def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_value: Optional[BaseException],
+        exc_traceback: Optional[TracebackType],
     ) -> None:
-        if exc_type is not None and exc_val is not None:
-            self._mlflowclient.log_text(
-                run_id=self._run_id,
-                text=f"Exception: {exc_type}: {exc_val}",
-                artifact_file="error.log",
-            )
-            logging.getLogger("getML").error(
-                f"Exception: {exc_type}: {exc_val}",
-                exc_info=(exc_type, exc_val, exc_tb),
+        if exc_type is not None and exc_value is not None:
+            log_exit_exception(
+                self._mlflowclient, self._run_id, exc_type, exc_value, exc_traceback
             )
         else:
             self.log_generated_information()
@@ -67,7 +62,7 @@ class PipelineLogger:
     def log_parameters(self) -> None:
         parameters: List[Param] = []
 
-        for parameter_name in PARAMETER_NAMES:
+        for parameter_name in self.PARAMETER_NAMES:
             parameter = getattr(self._pipeline, parameter_name)
             if is_dataclass(type(parameter)):
                 parameters.extend(self._serialize_dataclass(parameter_name, parameter))

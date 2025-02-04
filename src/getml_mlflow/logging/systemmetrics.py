@@ -10,6 +10,9 @@ import mlflow.utils.time
 import numpy
 import requests
 
+import getml
+from getml_mlflow.logging.logger import log_exit_exception, log_request_exception
+
 
 class Metric(StrEnum):
     CPU_USAGE = "engine_cpu_usage_per_virtual_core_in_pct"
@@ -61,10 +64,11 @@ class SystemMetrics:
                     )
                 )
             except requests.exceptions.RequestException as exception:
-                self._mlflowclient.log_text(
-                    run_id=self._run_id,
-                    text=f"Exception on GET({metric_url}): {exception}",
-                    artifact_file="error.log",
+                log_request_exception(
+                    self._mlflowclient,
+                    self._run_id,
+                    exception,
+                    f"GET({metric_url})",
                 )
                 continue
         if metrics:
@@ -81,14 +85,15 @@ class SystemMetrics:
                 if response.ok:
                     valid_metrics_endpoints[name] = endpoint
             except requests.exceptions.RequestException as exception:
-                logging.getLogger("getML").warn(
-                    "Engine metrics are available in the Enterprise edition. "
-                    "Visit https://getml.com/latest/enterprise/ for more information"
+                log_request_exception(
+                    self._mlflowclient,
+                    self._run_id,
+                    exception,
+                    f"GET({endpoint})",
                 )
-                self._mlflowclient.log_text(
-                    run_id=self._run_id,
-                    text=f"Exception on GET({endpoint}): {exception}",
-                    artifact_file="error.log",
+                logging.getLogger("getML").warn(
+                    f"Engine metrics ({endpoint}) are available in the Enterprise edition. "
+                    f"Visit {getml.constants.ENTERPRISE_DOCS_URL} for more information"
                 )
                 continue
         return valid_metrics_endpoints
@@ -101,18 +106,12 @@ class SystemMetrics:
     def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_value: Optional[BaseException],
+        exc_traceback: Optional[TracebackType],
     ):
-        if exc_type is not None and exc_val is not None:
-            self._mlflowclient.log_text(
-                run_id=self._run_id,
-                text=f"Exception: {exc_type}: {exc_val}",
-                artifact_file="error.log",
-            )
-            logging.getLogger("getML").error(
-                f"Exception: {exc_type}: {exc_val}",
-                exc_info=(exc_type, exc_val, exc_tb),
+        if exc_type is not None and exc_value is not None:
+            log_exit_exception(
+                self._mlflowclient, self._run_id, exc_type, exc_value, exc_traceback
             )
 
         self._event.set()

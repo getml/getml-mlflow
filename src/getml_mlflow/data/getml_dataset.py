@@ -1,7 +1,8 @@
 import hashlib
 import json
+import pathlib
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import mlflow
 import mlflow.data.dataset
@@ -11,61 +12,101 @@ import mlflow.types
 from mlflow.types.schema import ColSpec, DataType, Schema
 from typing_extensions import override
 
+import getml
+from getml.data.roles.container import Roles
+from getml.data.roles.types import Role
 from getml_mlflow.data import dataframelike
-from getml_mlflow.data.dataframelike import DataFrameLike
+from getml_mlflow.data.dataframelike import DataFrameLike, get_base, get_dataframe_name
 
 
 class GetMLDatasetSource(mlflow.data.dataset_source.DatasetSource):
+    @classmethod
+    def from_parquet(
+        cls,
+        path: str,
+        roles: Union[Dict[Union[Role, str], Iterable[str]], Roles, None] = None,
+        ignore: bool = False,
+        colnames: Iterable[str] = (),
+    ) -> "GetMLDatasetSource":
+        dataframe: getml.DataFrame = getml.DataFrame.from_parquet(
+            path, pathlib.Path(path).stem, roles, ignore, False, colnames
+        )
+        return cls(dataframe)
+
+    @classmethod
+    def from_getml(
+        cls,
+        dataframe_name: str,
+        roles: Union[Dict[Union[Role, str], Iterable[str]], Roles, None] = None,
+    ) -> "GetMLDatasetSource":
+        dataframe: getml.DataFrame = getml.DataFrame(dataframe_name, roles).load()
+        return cls(dataframe)
+
+    @classmethod
+    def from_dataframe_like(cls, dataframe_like: DataFrameLike) -> "GetMLDatasetSource":
+        dataframe: getml.DataFrame = get_base(dataframe_like).save().load()
+        return cls(dataframe)
+
+    def __init__(self, dataframe: getml.DataFrame) -> None:
+        self._dataframe: getml.DataFrame = dataframe
+        super().__init__()
+
     @override
     @staticmethod
     def _get_source_type() -> str:
-        print("GetMLDatasetSource._get_source_type")
-        return "getml"
+        return "http"
 
     @override
     def load(self) -> Any:
-        print("GetMLDatasetSource.load")
-        return None
+        return self._dataframe.save().load()
 
     @override
     @staticmethod
     def _can_resolve(raw_source: Any) -> bool:
-        print("GetMLDatasetSource._can_resolve")
-        if isinstance(raw_source, str):
-            return raw_source.startswith("getml:/")
-        return False
+        return isinstance(raw_source, Union[str, DataFrameLike])
 
     @override
     @classmethod
     def _resolve(cls, raw_source: Any) -> "GetMLDatasetSource":
-        print("GetMLDatasetSource._resolve")
-        return GetMLDatasetSource()
+        if isinstance(raw_source, DataFrameLike):
+            return cls.from_dataframe_like(raw_source)
+        if isinstance(raw_source, str):
+            if raw_source.endswith(".parquet"):
+                return cls.from_parquet(raw_source)
+
+            return cls.from_getml(raw_source)
+        raise NotImplementedError(f"Cannot resolve source {raw_source}")
 
     @override
     def to_dict(self) -> dict:
-        print("GetMLDatasetSource.to_dict")
-        return {}
+        project_name: str = getml.project.name
+        dataframe_name: str = get_dataframe_name(self._dataframe)
+
+        return {
+            "url": f"http://localhost:1709/#/getdataframe/{project_name}/{dataframe_name}/",
+            "dataframe_name": dataframe_name,
+            "project_name": project_name,
+            "roles": self._dataframe.roles.to_dict(),
+        }
 
     @override
     @classmethod
     def from_dict(cls, source_dict: dict) -> "GetMLDatasetSource":
-        print("GetMLDatasetSource.from_dict")
-        return GetMLDatasetSource()
-
-
-GETML_ROLE_TO_MLFLOW_TYPE = {
-    "categorical": DataType.string,
-    "join_key": DataType.string,
-    "numerical": DataType.float,
-    "target": DataType.float,
-    "text": DataType.string,
-    "time_stamp": DataType.float,
-    "unused_float": DataType.float,
-    "unused_string": DataType.string,
-}
+        return cls.from_getml(source_dict["dataframe_name"], source_dict["roles"])
 
 
 class GetMLDataset(mlflow.data.dataset.Dataset):
+    GETML_ROLE_TO_MLFLOW_TYPE = {
+        "categorical": DataType.string,
+        "join_key": DataType.string,
+        "numerical": DataType.double,
+        "target": DataType.double,
+        "text": DataType.string,
+        "time_stamp": DataType.double,
+        "unused_float": DataType.double,
+        "unused_string": DataType.string,
+    }
+
     def __init__(
         self,
         dataframe_like: DataFrameLike,
@@ -97,7 +138,7 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
         # A unique digest for a dataset is necessary as it will just be stored once in the backend
         # TODO: Add dataset_source information
         now_hash = hashlib.md5(datetime.utcnow().isoformat().encode())
-        return f"{dataframe_like_hash.hexdigest()}-{now_hash.hexdigest()}"
+        return f"{dataframe_like_hash.hexdigest()[:8]}-{now_hash.hexdigest()[:8]}"
 
     @override
     def to_dict(self) -> Dict[str, str]:
@@ -113,6 +154,17 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
             }
         )
         return result
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "digest": self.digest,
+            "source": self.source.to_dict(),
+            "source_type": self.source._get_source_type(),
+            "schema": self.schema.to_dict() if self.schema else None,
+            "profile": self.profile,
+            "roles": self._roles,
+        }
 
     @property
     @override
@@ -137,7 +189,7 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
 
     def _to_colspec(self, name: str, type: str) -> ColSpec:
         return ColSpec(
-            type=GETML_ROLE_TO_MLFLOW_TYPE[type],
+            type=self.GETML_ROLE_TO_MLFLOW_TYPE[type],
             name=name,
             required=not type.startswith("unused_"),
         )
@@ -145,35 +197,11 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
     def _resolve_source(
         self, dataframe_like: DataFrameLike
     ) -> mlflow.data.dataset_source.DatasetSource:
-        # with TemporaryDirectory() as temp_dir:
-        #     filename = f"{temp_dir}/{self._name}.parquet"
-        #     dataframe_like.to_parquet(filename)
-        #     mlflow.log_artifact(filename)  # TODO add run_id
-        # artifact_uri = mlflow.get_artifact_uri(f"{self._name}.parquet")
-        # for source in mlflow.data.dataset_source_registry.get_registered_sources():
-        #     if type(source).__name__ == "LocalArtifactDatasetSource":
-        #         source.from_dict({"uri": artifact_uri})
-        # return DatasetSource.from_dict({})
-        # return resolve_dataset_source(artifact_uri)
-        print("GetMLDataset._resolve_source")
-        return GetMLDatasetSource()
+        return GetMLDatasetSource.from_dataframe_like(dataframe_like)
 
-
-# def from_getml(
-#     dataframe_like: DataFrameLike,
-#     *args,
-#     **kwargs,
-#     # source: Optional[DatasetSource] = None,
-#     # name: Optional[str] = None,
-#     # digest: Optional[str] = None,
-# ) -> mlflow.entities.Dataset:
-#     mlflow.log_input
-#     return mlflow.entities.Dataset(
-#         name=dataframelike.get_name(dataframe_like),
-#         digest="getml-digest",
-#         source="getml-source",
-#         source_type="magic-getml-source-type",
-#         schema=mlflow.types.Schema([]).to_json(),
-#         profile=json.dumps({"profile": "getml-profile"}),
-#     )
-#
+    @property
+    def _roles(self) -> Dict[str, str]:
+        return {
+            key: str(value)
+            for (key, value) in self._dataframe_like.roles.to_mapping().items()
+        }

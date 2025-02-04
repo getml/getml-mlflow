@@ -1,4 +1,3 @@
-import logging
 from types import TracebackType
 from typing import Callable, Dict, Optional, Sequence, Type, Union
 
@@ -12,6 +11,7 @@ from numpy.typing import NDArray
 
 from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.datacontainer import DataContainerLogger
+from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetrics
@@ -45,17 +45,11 @@ class Run:
         self,
         exc_type: Optional[Type[BaseException]],
         exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_traceback: Optional[TracebackType],
     ) -> None:
         if exc_type is not None and exc_value is not None:
-            self._mlflowclient.log_text(
-                run_id=self.id,
-                text=f"Exception: {exc_type}: {exc_value}",
-                artifact_file="error.log",
-            )
-            logging.getLogger("getML").error(
-                f"Exception: {exc_type}: {exc_value}",
-                exc_info=(exc_type, exc_value, traceback),
+            log_exit_exception(
+                self._mlflowclient, None, exc_type, exc_value, exc_traceback
             )
             self._mlflowclient.set_terminated(
                 self.id, status=RunStatus.to_string(RunStatus.FAILED)
@@ -290,12 +284,13 @@ def transform(
                         mlflowclient, transform_run.id
                     ).log_data_container(
                         data_container=transform_output,
-                        context="transform_output",
+                        context="output",
                     )
                 elif isinstance(transform_output, numpy.ndarray):
                     NumpyLogger(mlflowclient, transform_run.id).log_ndarray_as_artifact(
                         data=transform_output,
-                        name="transform_output",
+                        name="output",
+                        artifact_path="output",
                     )
 
     return transform_output
