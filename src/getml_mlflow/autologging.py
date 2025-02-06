@@ -23,6 +23,9 @@ def with_logging_configuration(logging_configuration: LoggingConfiguration):
     return decorator
 
 
+DEFAULT_MLFOW_TRACKING_URI = "http://localhost:5000"
+
+
 @autologging_integration(FLAVOR_NAME)
 def autolog(
     *,
@@ -42,6 +45,7 @@ def autolog(
     create_runs: bool = True,
     extra_tags: Optional[Dict[str, str]] = None,
     getml_project_path: Optional[str] = None,
+    tracking_uri: Optional[str] = None,
 ):
     if disable:
         revert_patches(FLAVOR_NAME)
@@ -50,7 +54,9 @@ def autolog(
     getml_mlflow.logging.logger.set_up()
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflowclient=mlflow.MlflowClient(),
+        mlflowclient=mlflow.MlflowClient(
+            tracking_uri=tracking_uri or DEFAULT_MLFOW_TRACKING_URI
+        ),
         log_data_container_information=log_data_container_information,
         log_data_container_as_artifact=log_data_container_as_artifact,
         log_function_parameters=log_function_parameters,

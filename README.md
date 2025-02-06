@@ -9,12 +9,11 @@ $ uv venv
 
 Install getml-mlflow via pip from branch.
 ```bash
-$ uv pip install "git+ssh://git@github.com/getml/getml-mlflow.git@4-consolidate-evaluate-extra"
+$ uv pip install "git+ssh://git@github.com/getml/getml-mlflow.git"
 ```
 
 Run the mlflow server with its browser UI.
 ```bash
-$ uv pip install mlflow
 $ uv run mlflow ui -h 0.0.0.0 --dev
 ```
 
@@ -23,25 +22,16 @@ Open the mlflow UI in your browser.
 $ open http://localhost:5000
 ```
 
-Run jupyter lab with to experiment with getml and mlflow.
-```bash
-$ uv pip install jupyter
-$ uv run jupyter-lab --ip=0.0.0.0
+### Log via mlflow
+
+To log information from getML pipelines and its `fit`, `score`, `predict` and `transform` methods into mlflow, you can activate the mlflow autologging capabilities.
+
+```python
+import getml_mlflow
+getml_mlflow.autolog()
 ```
 
-This should automatically open jupyter lab in your browser.
-
-Alternatively, you can open jupyter lab in your browser by copying the url with the token from the console output.
-```bash
-$ open http://localhost:8888/lab?token=ffffffffffffffffffffffffffffffffffffffffffffffff
-```
-
-### Run the example
-
-* Download the example notebook [interstate94.ipynb](/interstate94.ipynb) and add it to the jupyter lab.
-* Run the notebook.
-* Check the mlflow UI for gathered information of the experiment.
-
+You can try this with our [demonstrational notebooks](https://github.com/getml/getml-demo/) and the [community variants](https://github.com/getml/getml-community/tree/main/demo-notebooks).
 
 ## Delete a deleted experiment
 

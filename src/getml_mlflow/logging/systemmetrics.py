@@ -87,6 +87,8 @@ class SystemMetrics:
                 response: requests.Response = requests.get(endpoint)
                 if response.ok:
                     valid_metrics_endpoints[name] = endpoint
+                else:
+                    response.raise_for_status()
             except requests.exceptions.RequestException as exception:
                 log_request_exception(
                     self._mlflowclient,
