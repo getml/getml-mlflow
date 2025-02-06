@@ -64,7 +64,7 @@ class DataContainerLogger:
     ):
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
         self._run_id: str = run_id
-        self._run = mlflow.get_run(run_id)
+        self._run = self._mlflowclient.get_run(run_id)
         self._seperator: Callable[[], str] = self._get_seperator(target)
         self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
             self._get_log_dataframe_like(target)

@@ -52,11 +52,11 @@ def autolog(
         return
 
     getml_mlflow.logging.logger.set_up()
+    tracking_uri = tracking_uri or DEFAULT_MLFOW_TRACKING_URI
+    mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflowclient=mlflow.MlflowClient(
-            tracking_uri=tracking_uri or DEFAULT_MLFOW_TRACKING_URI
-        ),
+        mlflowclient=mlflow.MlflowClient(tracking_uri=tracking_uri),
         log_data_container_information=log_data_container_information,
         log_data_container_as_artifact=log_data_container_as_artifact,
         log_function_parameters=log_function_parameters,

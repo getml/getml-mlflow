@@ -14,7 +14,7 @@ from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
-from getml_mlflow.logging.systemmetrics import SystemMetrics
+from getml_mlflow.logging.systemmetricslogger import SystemMetricsLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
@@ -84,7 +84,7 @@ class Run:
             return run_info.experiment_id
         else:
             project_name: str = getml.project.name
-            if experiment := mlflow.get_experiment_by_name(project_name):
+            if experiment := self._mlflowclient.get_experiment_by_name(project_name):
                 return experiment.experiment_id
 
             raise LookupError(f"MLflow Experiment '{project_name}' not found")
@@ -165,6 +165,9 @@ def fit(
         )
         pipeline_logger.log_constructor_arguments()
 
+        # TODO: log data model
+        #
+
         with Run(
             mlflowclient=mlflowclient,
             pipeline=pipeline,
@@ -208,7 +211,8 @@ def fit(
                         validation_table, "Validation"
                     )
 
-                with SystemMetrics(
+                with SystemMetricsLogger(
+                    mlflowclient,
                     fit_run.id,
                     log_system_metrics=logging_configuration.log_system_metrics,
                 ):

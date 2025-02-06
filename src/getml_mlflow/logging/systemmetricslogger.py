@@ -19,16 +19,16 @@ class Metric(StrEnum):
     MEMORY_USAGE = "memory_usage_in_pct"
 
 
-class SystemMetrics:
+class SystemMetricsLogger:
     HOST: str = "localhost"
     PORT: int = 1709
 
     def __init__(
         self,
+        mlflowclient: mlflow.MlflowClient,
         run_id: str,
         host: str = HOST,
         port: int = PORT,
-        mlflowclient: Optional[mlflow.MlflowClient] = None,
         *,
         log_system_metrics: bool = True,
     ):
@@ -41,7 +41,7 @@ class SystemMetrics:
             Metric.CPU_USAGE: f"{url}/getcpuusage/",
             Metric.MEMORY_USAGE: f"{url}/getmemoryusage/",
         }
-        self._mlflowclient = mlflowclient or mlflow.MlflowClient()
+        self._mlflowclient = mlflowclient
         self._log_system_metrics = log_system_metrics
 
     def _run_logging_metrics(self) -> None:
