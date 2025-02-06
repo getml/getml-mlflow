@@ -4,48 +4,78 @@ from typing import Dict, Optional
 import getml
 import mlflow
 from mlflow.utils.autologging_utils import autologging_integration
-from mlflow.utils.autologging_utils.safety import safe_patch
+from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
 
 import getml_mlflow.logging.logger
 from getml_mlflow.flavor import FLAVOR_NAME
+from getml_mlflow.loggingconfiguration import LoggingConfiguration
 from getml_mlflow.patch import engine, pipeline
 
 
-def with_mlflowclient(mlflowclient: mlflow.MlflowClient):
+def with_logging_configuration(logging_configuration: LoggingConfiguration):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            return func(*args, **kwargs, mlflowclient=mlflowclient)
+            return func(*args, **kwargs, logging_configuration=logging_configuration)
 
         return wrapper
 
     return decorator
 
 
-# TODO: Pass and check arguments to the right functions
 @autologging_integration(FLAVOR_NAME)
 def autolog(
-    log_input_examples: bool = False,
-    log_model_signatures: bool = True,
-    log_models: bool = True,
-    log_datasets: bool = True,
+    *,
+    log_data_container_information: bool = True,
+    log_data_container_as_artifact: bool = True,
+    log_function_parameters: bool = True,
+    log_function_return: bool = True,
+    log_pipeline_parameters: bool = True,
+    log_pipeline_tags: bool = True,
+    log_pipeline_scores: bool = True,
+    log_pipeline_features: bool = True,
+    log_pipeline_columns: bool = True,
+    log_pipeline_targets: bool = True,
+    log_system_metrics: bool = True,
     disable: bool = False,
-    exclusive: bool = False,
-    disable_for_unsupported_versions: bool = False,
     silent: bool = False,
+    create_runs: bool = True,
     extra_tags: Optional[Dict[str, str]] = None,
-    # TODO: Project folder of getml for pipeline logging
-    # TODO: dataset source in getml  vs save as artifact
+    getml_project_path: Optional[str] = None,
 ):
-    mlflowclient = mlflow.MlflowClient()
+    if disable:
+        revert_patches(FLAVOR_NAME)
+        return
+
     getml_mlflow.logging.logger.set_up()
+
+    logging_configuration: LoggingConfiguration = LoggingConfiguration(
+        mlflowclient=mlflow.MlflowClient(),
+        log_data_container_information=log_data_container_information,
+        log_data_container_as_artifact=log_data_container_as_artifact,
+        log_function_parameters=log_function_parameters,
+        log_function_return=log_function_return,
+        log_pipeline_parameters=log_pipeline_parameters,
+        log_pipeline_tags=log_pipeline_tags,
+        log_pipeline_scores=log_pipeline_scores,
+        log_pipeline_features=log_pipeline_features,
+        log_pipeline_columns=log_pipeline_columns,
+        log_pipeline_targets=log_pipeline_targets,
+        log_system_metrics=log_system_metrics,
+        silent=silent,
+        create_runs=create_runs,
+        extra_tags=extra_tags,
+        getml_project_path=getml_project_path,
+    )
 
     for destination in (getml, getml.engine, getml.engine.helpers):
         safe_patch(
             autologging_integration=FLAVOR_NAME,
             destination=destination,
             function_name="set_project",
-            patch_function=with_mlflowclient(mlflowclient)(engine.set_project),
+            patch_function=with_logging_configuration(logging_configuration)(
+                engine.set_project
+            ),
             manage_run=False,
         )
 
@@ -58,14 +88,14 @@ def autolog(
     )
 
     # TODO: Check folder Pipeline to Artifact to getML
-    # TODO: Log metadata on Dataset
     # TODO: Add project/pipeline path option to autologging
+    # TODO: log data model
 
     safe_patch(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="fit",
-        patch_function=with_mlflowclient(mlflowclient)(pipeline.fit),
+        patch_function=with_logging_configuration(logging_configuration)(pipeline.fit),
         manage_run=False,
     )
 
@@ -73,7 +103,9 @@ def autolog(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="score",
-        patch_function=with_mlflowclient(mlflowclient)(pipeline.score),
+        patch_function=with_logging_configuration(logging_configuration)(
+            pipeline.score
+        ),
         manage_run=False,
     )
 
@@ -81,7 +113,9 @@ def autolog(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="predict",
-        patch_function=with_mlflowclient(mlflowclient)(pipeline.predict),
+        patch_function=with_logging_configuration(logging_configuration)(
+            pipeline.predict
+        ),
         manage_run=False,
     )
 
@@ -89,6 +123,8 @@ def autolog(
         autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="transform",
-        patch_function=with_mlflowclient(mlflowclient)(pipeline.transform),
+        patch_function=with_logging_configuration(logging_configuration)(
+            pipeline.transform
+        ),
         manage_run=False,
     )

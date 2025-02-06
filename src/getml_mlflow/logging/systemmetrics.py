@@ -4,13 +4,13 @@ from enum import StrEnum
 from types import TracebackType
 from typing import Dict, List, Optional, Type
 
+import getml
 import mlflow
 import mlflow.entities
 import mlflow.utils.time
 import numpy
 import requests
 
-import getml
 from getml_mlflow.logging.logger import log_exit_exception, log_request_exception
 
 
@@ -29,6 +29,8 @@ class SystemMetrics:
         host: str = HOST,
         port: int = PORT,
         mlflowclient: Optional[mlflow.MlflowClient] = None,
+        *,
+        log_system_metrics: bool = True,
     ):
         self._run_id: str = run_id
         self._event: threading.Event = threading.Event()
@@ -40,6 +42,7 @@ class SystemMetrics:
             Metric.MEMORY_USAGE: f"{url}/getmemoryusage/",
         }
         self._mlflowclient = mlflowclient or mlflow.MlflowClient()
+        self._log_system_metrics = log_system_metrics
 
     def _run_logging_metrics(self) -> None:
         step: int = 0
@@ -99,6 +102,9 @@ class SystemMetrics:
         return valid_metrics_endpoints
 
     def __enter__(self):
+        if not self._log_system_metrics:
+            return self
+
         self._thread = threading.Thread(target=self._run_logging_metrics)
         self._thread.start()
         return self
@@ -113,6 +119,9 @@ class SystemMetrics:
             log_exit_exception(
                 self._mlflowclient, self._run_id, exc_type, exc_value, exc_traceback
             )
+
+        if not self._log_system_metrics:
+            return
 
         self._event.set()
         if self._thread is not None:

@@ -1,15 +1,15 @@
-from typing import Callable, Optional
+from typing import Callable
 
-import mlflow
-import mlflow.entities
+from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
 def set_project(
     original: Callable,
     name: str,
-    mlflowclient: Optional[mlflow.MlflowClient] = None,
+    *,
+    logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
-    mlflowclient = mlflowclient or mlflow.MlflowClient()
+    mlflowclient = logging_configuration.mlflowclient
     set_project_method: Callable = original
 
     set_project_method(name)

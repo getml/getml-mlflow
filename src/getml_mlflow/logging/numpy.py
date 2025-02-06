@@ -6,7 +6,11 @@ from numpy.typing import NDArray
 
 
 class NumpyLogger:
-    def __init__(self, mlflowclient: mlflow.MlflowClient, run_id: str) -> None:
+    def __init__(
+        self,
+        mlflowclient: mlflow.MlflowClient,
+        run_id: str,
+    ) -> None:
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
         self._run_id: str = run_id
 

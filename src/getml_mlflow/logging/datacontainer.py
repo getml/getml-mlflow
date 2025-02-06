@@ -2,13 +2,13 @@ from enum import StrEnum
 from tempfile import TemporaryDirectory
 from typing import Callable, Dict, List, Sequence, Union
 
+import getml
 import mlflow
 import mlflow.data.code_dataset_source
 import mlflow.data.pandas_dataset
 from mlflow.entities import DatasetInput, InputTag
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
-import getml
 from getml_mlflow.data import dataframelike, getml_dataset
 from getml_mlflow.data.dataframelike import DataFrameLike
 
@@ -20,18 +20,47 @@ class DataContainerLoggerTarget(StrEnum):
 
 class DataContainerLogger:
     @classmethod
-    def as_artifact(cls, mlflowclient: mlflow.MlflowClient, run_id: str):
-        return cls(mlflowclient, run_id, DataContainerLoggerTarget.ARTIFACT)
+    def as_artifact(
+        cls,
+        mlflowclient: mlflow.MlflowClient,
+        run_id: str,
+        *,
+        log_information: bool = True,
+        log_as_artifact: bool = True,
+    ):
+        return cls(
+            mlflowclient,
+            run_id,
+            DataContainerLoggerTarget.ARTIFACT,
+            log_information=log_information,
+            log_as_artifact=log_as_artifact,
+        )
 
     @classmethod
-    def as_input(cls, mlflowclient: mlflow.MlflowClient, run_id: str):
-        return cls(mlflowclient, run_id, DataContainerLoggerTarget.INPUT)
+    def as_input(
+        cls,
+        mlflowclient: mlflow.MlflowClient,
+        run_id: str,
+        *,
+        log_information: bool = True,
+        log_as_artifact: bool = True,
+    ):
+        return cls(
+            mlflowclient,
+            run_id,
+            DataContainerLoggerTarget.INPUT,
+            log_information=log_information,
+            log_as_artifact=log_as_artifact,
+        )
 
     def __init__(
         self,
         mlflowclient: mlflow.MlflowClient,
         run_id: str,
         target: DataContainerLoggerTarget,
+        *,
+        log_information: bool = True,
+        log_as_artifact: bool = True,
     ):
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
         self._run_id: str = run_id
@@ -40,6 +69,8 @@ class DataContainerLogger:
         self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
             self._get_log_dataframe_like(target)
         )
+        self._log_information: bool = log_information
+        self._log_as_artifact: bool = log_as_artifact
 
     def _get_seperator(self, target: DataContainerLoggerTarget):
         if target == DataContainerLoggerTarget.ARTIFACT:
@@ -87,6 +118,9 @@ class DataContainerLogger:
     def _log_dataframe_like_as_input(
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
+        if not self._log_information:
+            return
+
         dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(dataframe_like)
 
         dataset_context: str = self._seperator().join(context)
@@ -107,27 +141,24 @@ class DataContainerLogger:
     def _log_dataframe_like_as_artifact(
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
-        filename: str = dataframelike.get_name(dataframe_like) + ".parquet"
         artifact_path: str = self._seperator().join(context)
-        with TemporaryDirectory() as temp_dir:
-            local_path: str = f"{temp_dir}/{filename}"
-            dataframe_like.to_parquet(local_path)
-            artifact_path: str = self._seperator().join(context)
-            self._mlflowclient.log_artifact(
-                run_id=self._run_id,
-                local_path=local_path,
-                artifact_path=artifact_path,
+        if self._log_as_artifact:
+            with TemporaryDirectory() as temp_dir:
+                filename: str = dataframelike.get_name(dataframe_like) + ".parquet"
+                local_path: str = f"{temp_dir}/{filename}"
+                dataframe_like.to_parquet(local_path)
+                self._mlflowclient.log_artifact(
+                    run_id=self._run_id,
+                    local_path=local_path,
+                    artifact_path=artifact_path,
+                )
+        if self._log_information:
+            dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(
+                dataframe_like
             )
-
-        dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(dataframe_like)
-        self._mlflowclient.log_inputs(
-            run_id=self._run_id,
-            datasets=[DatasetInput(dataset=dataset._to_mlflow_entity())],
-        )
-
-        self._mlflowclient.log_dict(
-            self._run_id, dataset.as_dict(), f"{artifact_path}/{dataset.name}.json"
-        )
+            self._mlflowclient.log_dict(
+                self._run_id, dataset.as_dict(), f"{artifact_path}/{dataset.name}.json"
+            )
 
     def _log_subset(self, subset: getml.data.Subset, context: List[str]) -> None:
         self._log_dataframe_like(subset.population, context + ["Population"])
