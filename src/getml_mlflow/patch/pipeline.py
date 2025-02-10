@@ -14,7 +14,7 @@ from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
-from getml_mlflow.logging.systemmetricslogger import SystemMetricsLogger
+from getml_mlflow.logging.systemmetrics import SystemMetricsLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 

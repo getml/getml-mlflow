@@ -3,7 +3,7 @@ from getml_mlflow.logging import (
     logger,
     numpy,
     pipeline,
-    systemmetricslogger,
+    systemmetrics,
 )
 
-__all__ = ["datacontainer", "logger", "numpy", "pipeline", "systemmetricslogger"]
+__all__ = ["datacontainer", "logger", "numpy", "pipeline", "systemmetrics"]
