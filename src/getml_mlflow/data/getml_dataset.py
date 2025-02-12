@@ -18,6 +18,7 @@ import getml
 import mlflow
 import mlflow.data.dataset
 import mlflow.data.dataset_source
+from mlflow.data.dataset_source import DatasetSource
 import mlflow.entities.dataset
 import mlflow.types
 from getml.data import DataFrame
@@ -118,6 +119,17 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
         "unused_string": DataType.string,
     }
 
+    GETML_ROLE_TO_EMOJI: Dict[str, str] = {
+        "categorical": "🗃",
+        "join_key": "🔗",
+        "numerical": "🔢",
+        "target": "🎯",
+        "text": "📝",
+        "time_stamp": "⏰",
+        "unused_float": "🧮",
+        "unused_string": "🧵",
+    }
+
     def __init__(
         self,
         dataframe_like: DataFrameLike,
@@ -203,7 +215,7 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
     def _to_colspec(self, name: str, type: str) -> ColSpec:
         return ColSpec(
             type=self.GETML_ROLE_TO_MLFLOW_TYPE[type],
-            name=name,
+            name=f"{self.GETML_ROLE_TO_EMOJI[type]} {name}",
             required=not type.startswith("unused_"),
         )
 

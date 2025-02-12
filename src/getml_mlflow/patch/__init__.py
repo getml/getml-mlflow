@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import List
 
-from getml_mlflow.patch import engine, pipeline
+from getml_mlflow.patch import engine, pipeline, project
 
 __all__: List[str] = [
     "engine",
     "pipeline",
+    "project",
 ]
