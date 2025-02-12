@@ -13,7 +13,7 @@ from typing_extensions import ParamSpec
 import getml_mlflow.logging.logger
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
-from getml_mlflow.patch import engine, pipeline
+from getml_mlflow.patch import engine, pipeline, project
 
 CallableArgsTypes = ParamSpec("CallableArgsTypes")
 CallableReturnType = TypeVar("CallableReturnType")
@@ -104,11 +104,32 @@ def autolog(
 
     safe_patch(
         autologging_integration=FLAVOR_NAME,
+        destination=getml.project.attrs,
+        function_name="switch",
+        patch_function=with_logging_configuration(logging_configuration)(
+            project.switch
+        ),
+        manage_run=False,
+    )
+
+    safe_patch(
+        autologging_integration=FLAVOR_NAME,
         destination=getml.pipeline.Pipeline,
         function_name="__init__",
         patch_function=pipeline.init,
         manage_run=False,
     )
+
+    for destination in (getml.pipeline, getml.pipeline.helpers2):
+        safe_patch(
+            autologging_integration=FLAVOR_NAME,
+            destination=destination,
+            function_name="load",
+            patch_function=with_logging_configuration(logging_configuration)(
+                pipeline.load
+            ),
+            manage_run=False,
+        )
 
     # TODO: Check folder Pipeline to Artifact to getML
     # TODO: Add project/pipeline path option to autologging

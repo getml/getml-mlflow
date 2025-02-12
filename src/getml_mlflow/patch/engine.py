@@ -4,6 +4,8 @@ from typing import Callable
 
 from mlflow import MlflowClient
 
+from mlflow import MlflowClient
+
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 

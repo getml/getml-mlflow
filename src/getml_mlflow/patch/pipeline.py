@@ -5,6 +5,7 @@ from typing import Callable, Dict, Optional, Sequence, Type, Union
 
 import getml
 import mlflow
+from mlflow import MlflowClient
 import mlflow.entities
 import numpy
 from getml.data import DataFrame, Subset
@@ -120,11 +121,30 @@ class Run:
 
 def init(original: Callable, pipeline: Pipeline, *args, **kwargs) -> None:
     init_method: Callable = original
-
     if not hasattr(pipeline, "_mlflow_run_info"):
         setattr(pipeline, "_mlflow_run_info", None)
 
     init_method(pipeline, *args, **kwargs)
+
+
+def load(
+    original: Callable, name: str, *, logging_configuration: LoggingConfiguration
+) -> getml.Pipeline:
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
+    load_method: Callable = original
+
+    load_output: Pipeline = load_method(name)
+
+    with Run(
+        mlflow_client=mlflow_client,
+        pipeline=load_output,
+        name=pipeline_name(load_output),
+        create_runs=logging_configuration.create_runs,
+        extra_tags=logging_configuration.extra_tags,
+    ) as run:
+        setattr(load_output, "_mlflow_run_info", run.info)
+
+    return load_output
 
 
 def pipeline_name(pipeline: Pipeline) -> str:

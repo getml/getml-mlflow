@@ -1,1 +1,1 @@
-FLAVOR_NAME = "getml"
+FLAVOR_NAME: str = "getml"
