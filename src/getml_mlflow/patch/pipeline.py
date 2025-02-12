@@ -175,6 +175,8 @@ def fit(
     mlflow_client: MlflowClient = logging_configuration.mlflow_client
     fit_method: Callable = original
 
+    ###############
+    # Log pipeline
     with Run(
         mlflow_client=mlflow_client,
         pipeline=pipeline,
@@ -183,6 +185,7 @@ def fit(
         extra_tags=logging_configuration.extra_tags,
     ) as run:
         setattr(pipeline, "_mlflow_run_info", run.info)
+        pipeline_run_id: str = run.info.run_id
         pipeline_logger: PipelineLogger = PipelineLogger(
             mlflow_client,
             run.id,
@@ -199,69 +202,69 @@ def fit(
         # TODO: log data model
         #
 
-        with Run(
-            mlflow_client=mlflow_client,
-            pipeline=pipeline,
-            name="fit",
-            create_runs=logging_configuration.create_runs,
-            extra_tags=logging_configuration.extra_tags,
-        ) as fit_run:
-            with PipelineLogger(
+    ###############
+    # Log fit call
+    with Run(
+        mlflow_client=mlflow_client,
+        pipeline=pipeline,
+        name="fit",
+        create_runs=logging_configuration.create_runs,
+        extra_tags=logging_configuration.extra_tags,
+    ) as fit_run:
+        with PipelineLogger(
+            mlflow_client,
+            fit_run.id,
+            pipeline,
+            log_parameters=logging_configuration.log_pipeline_parameters,
+            log_tags=logging_configuration.log_pipeline_tags,
+            log_scores=logging_configuration.log_pipeline_scores,
+            log_features=logging_configuration.log_pipeline_features,
+            log_columns=logging_configuration.log_pipeline_columns,
+            log_targets=logging_configuration.log_pipeline_targets,
+        ):
+            data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
                 fit_run.id,
-                pipeline,
-                log_parameters=logging_configuration.log_pipeline_parameters,
-                log_tags=logging_configuration.log_pipeline_tags,
-                log_scores=logging_configuration.log_pipeline_scores,
-                log_features=logging_configuration.log_pipeline_features,
-                log_columns=logging_configuration.log_pipeline_columns,
-                log_targets=logging_configuration.log_pipeline_targets,
-            ):
-                data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
-                    mlflow_client,
-                    fit_run.id,
-                    log_information=logging_configuration.log_data_container_information,
-                    log_as_artifact=logging_configuration.log_data_container_as_artifact,
-                )
-                if logging_configuration.log_function_parameters:
-                    data_container_logger.log_data_container(
-                        population_table, "Population"
-                    )
-                if (
-                    logging_configuration.log_function_parameters
-                    and peripheral_tables is not None
-                ):
-                    data_container_logger.log_data_containers(
-                        peripheral_tables, "Peripheral"
-                    )
-                if (
-                    logging_configuration.log_function_parameters
-                    and validation_table is not None
-                ):
-                    data_container_logger.log_data_container(
-                        validation_table, "Validation"
-                    )
-
-                with SystemMetricsLogger(
-                    mlflow_client,
-                    fit_run.id,
-                    log_system_metrics=logging_configuration.log_system_metrics,
-                ):
-                    fit_output: Pipeline = fit_method(
-                        pipeline,
-                        population_table,
-                        peripheral_tables,
-                        validation_table,
-                        check,
-                    )
-                mlflow_client.set_tag(fit_run.id, "id", pipeline.id)
-
-        mlflow_client.set_tag(run.id, "id", pipeline.id)
-        if logging_configuration.create_runs:
-            mlflow_client.update_run(
-                run_id=run.id,
-                name=pipeline_name(pipeline),
+                log_information=logging_configuration.log_data_container_information,
+                log_as_artifact=logging_configuration.log_data_container_as_artifact,
             )
+            if logging_configuration.log_function_parameters:
+                data_container_logger.log_data_container(population_table, "Population")
+            if (
+                logging_configuration.log_function_parameters
+                and peripheral_tables is not None
+            ):
+                data_container_logger.log_data_containers(
+                    peripheral_tables, "Peripheral"
+                )
+            if (
+                logging_configuration.log_function_parameters
+                and validation_table is not None
+            ):
+                data_container_logger.log_data_container(validation_table, "Validation")
+
+            with SystemMetricsLogger(
+                mlflow_client,
+                fit_run.id,
+                log_system_metrics=logging_configuration.log_system_metrics,
+            ):
+                fit_output: getml.Pipeline = fit_method(
+                    pipeline,
+                    population_table,
+                    peripheral_tables,
+                    validation_table,
+                    check,
+                )
+            mlflow_client.set_tag(fit_run.id, "id", pipeline.id)
+
+    ##################
+    # Update pipeline
+    mlflow_client.set_tag(pipeline_run_id, "id", pipeline.id)
+    if logging_configuration.create_runs:
+        mlflow_client.update_run(
+            run_id=pipeline_run_id,
+            name=pipeline_name(pipeline),
+        )
 
     return fit_output
 
