@@ -48,6 +48,7 @@ def autolog(
     log_pipeline_features: bool = True,
     log_pipeline_columns: bool = True,
     log_pipeline_targets: bool = True,
+    log_pipelne_as_artifact: bool = True,
     log_system_metrics: bool = True,
     disable: bool = False,
     silent: bool = False,
@@ -76,6 +77,7 @@ def autolog(
         log_pipeline_features=log_pipeline_features,
         log_pipeline_columns=log_pipeline_columns,
         log_pipeline_targets=log_pipeline_targets,
+        log_pipeline_as_artifact=log_pipelne_as_artifact,
         log_system_metrics=log_system_metrics,
         silent=silent,
         create_runs=create_runs,
@@ -125,7 +127,9 @@ def autolog(
 
     # TODO: Check folder Pipeline to Artifact to getML
     # TODO: Add project/pipeline path option to autologging
-    # TODO: log data model
+    # TODO: log data model -> SVG
+    # TODO: add current user as name
+    # TODO: check copilot agent for docstring generation
 
     safe_patch(
         autologging_integration=FLAVOR_NAME,

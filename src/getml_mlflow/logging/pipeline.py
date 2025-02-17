@@ -17,6 +17,7 @@ from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 
 from getml_mlflow.logging.logger import log_exit_exception
+from getml_mlflow.marshalling.pipeline import log_pipeline_as_artifact
 from getml_mlflow.util.callableenum import CallableEnumFactory
 
 PipelineParameter = CallableEnumFactory[Callable[[Pipeline], Any]].build(
@@ -46,6 +47,7 @@ class PipelineLogger:
         log_features: bool = True,
         log_columns: bool = True,
         log_targets: bool = True,
+        log_as_artifact: bool = True,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
@@ -56,6 +58,7 @@ class PipelineLogger:
         self._log_features: bool = log_features
         self._log_columns: bool = log_columns
         self._log_targets: bool = log_targets
+        self._log_as_artifact: bool = log_as_artifact
 
     def log_constructor_arguments(self) -> None:
         self.log_parameters()
@@ -66,6 +69,7 @@ class PipelineLogger:
         self.log_features()
         self.log_columns()
         self.log_targets()
+        self.log_pipeline_as_artifact()
 
     def __enter__(self) -> PipelineLogger:
         self.log_constructor_arguments()
@@ -234,3 +238,13 @@ class PipelineLogger:
     @staticmethod
     def maybe_round(value: float, ndigits: Optional[int]) -> float:
         return value if ndigits is None else round(value, ndigits)
+
+    def log_pipeline_as_artifact(self) -> None:
+        if not self._log_as_artifact:
+            return
+
+        log_pipeline_as_artifact(
+            mlflowclient=self._mlflowclient,
+            run_id=self._run_id,
+            pipeline=self._pipeline,
+        )
