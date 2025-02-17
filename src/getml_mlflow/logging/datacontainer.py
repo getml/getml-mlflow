@@ -14,10 +14,13 @@ from tempfile import TemporaryDirectory
 
 from getml.data import Subset
 from mlflow.entities import DatasetInput, InputTag
+import mlflow.entities
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
 from getml_mlflow.data import dataframelike, getml_dataset
 from getml_mlflow.data.dataframelike import DataFrameLike
+
+from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
 class DataContainerLoggerTarget(StrEnum):
@@ -32,15 +35,13 @@ class DataContainerLogger:
         mlflow_client: MlflowClient,
         run_id: str,
         *,
-        log_information: bool = True,
-        log_as_artifact: bool = True,
+        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
     ) -> DataContainerLogger:
         return cls(
             mlflow_client,
             run_id,
             DataContainerLoggerTarget.ARTIFACT,
-            log_information=log_information,
-            log_as_artifact=log_as_artifact,
+            logging_configuration=logging_configuration,
         )
 
     @classmethod
@@ -49,15 +50,13 @@ class DataContainerLogger:
         mlflow_client: MlflowClient,
         run_id: str,
         *,
-        log_information: bool = True,
-        log_as_artifact: bool = True,
+        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
     ) -> DataContainerLogger:
         return cls(
             mlflow_client,
             run_id,
             DataContainerLoggerTarget.INPUT,
-            log_information=log_information,
-            log_as_artifact=log_as_artifact,
+            logging_configuration=logging_configuration,
         )
 
     def __init__(
@@ -66,15 +65,19 @@ class DataContainerLogger:
         run_id: str,
         target: DataContainerLoggerTarget,
         *,
-        log_information: bool = True,
-        log_as_artifact: bool = True,
+        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
         self._run: Run = self._mlflow_client.get_run(run_id)
         self._target: DataContainerLoggerTarget = target
-        self._log_information: bool = log_information
-        self._log_as_artifact: bool = log_as_artifact
+        self._seperator: Callable[[], str] = self._get_seperator(target)
+        self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
+            self._get_log_dataframe_like(target)
+        )
+        self._logging_configuration: LoggingConfiguration.DataContainer = (
+            logging_configuration
+        )
 
     @cached_property
     def _separator(self) -> str:
@@ -129,7 +132,7 @@ class DataContainerLogger:
     def _log_dataframe_like_as_input(
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
-        if not self._log_information:
+        if not self._logging_configuration.log_information:
             return
 
         dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(dataframe_like)
@@ -153,7 +156,7 @@ class DataContainerLogger:
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
         artifact_path: str = self._separator.join(context)
-        if self._log_as_artifact:
+        if self._logging_configuration.log_as_artifact:
             with TemporaryDirectory() as temp_dir:
                 filename: str = dataframelike.get_name(dataframe_like) + ".parquet"
                 local_path: str = f"{temp_dir}/{filename}"
@@ -163,7 +166,7 @@ class DataContainerLogger:
                     local_path=local_path,
                     artifact_path=artifact_path,
                 )
-        if self._log_information:
+        if self._logging_configuration.log_information:
             dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(
                 dataframe_like
             )
