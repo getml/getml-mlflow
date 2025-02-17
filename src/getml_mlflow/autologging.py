@@ -56,7 +56,8 @@ def autolog(
     log_pipeline_features: bool = True,
     log_pipeline_columns: bool = True,
     log_pipeline_targets: bool = True,
-    log_pipelne_as_artifact: bool = True,
+    log_pipeline_data_model: bool = True,
+    log_pipeline_as_artifact: bool = True,
     log_system_metrics: bool = True,
     disable: bool = False,
     silent: bool = False,
@@ -74,18 +75,25 @@ def autolog(
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflow_client=MlflowClient(tracking_uri=tracking_uri),
-        log_data_container_information=log_data_container_information,
-        log_data_container_as_artifact=log_data_container_as_artifact,
-        log_function_parameters=log_function_parameters,
-        log_function_return=log_function_return,
-        log_pipeline_parameters=log_pipeline_parameters,
-        log_pipeline_tags=log_pipeline_tags,
-        log_pipeline_scores=log_pipeline_scores,
-        log_pipeline_features=log_pipeline_features,
-        log_pipeline_columns=log_pipeline_columns,
-        log_pipeline_targets=log_pipeline_targets,
-        log_pipeline_as_artifact=log_pipelne_as_artifact,
+        mlflow_client=mlflow.MlflowClient(tracking_uri=tracking_uri),
+        data_container=LoggingConfiguration.DataContainer(
+            log_information=log_data_container_information,
+            log_as_artifact=log_data_container_as_artifact,
+        ),
+        function=LoggingConfiguration.Function(
+            log_parameters=log_function_parameters,
+            log_return=log_function_return,
+        ),
+        pipeline=LoggingConfiguration.Pipeline(
+            log_parameters=log_pipeline_parameters,
+            log_tags=log_pipeline_tags,
+            log_scores=log_pipeline_scores,
+            log_features=log_pipeline_features,
+            log_columns=log_pipeline_columns,
+            log_targets=log_pipeline_targets,
+            log_data_model=log_pipeline_data_model,
+            log_as_artifact=log_pipeline_as_artifact,
+        ),
         log_system_metrics=log_system_metrics,
         silent=silent,
         create_runs=create_runs,
@@ -132,9 +140,6 @@ def autolog(
             ),
             manage_run=False,
         )
-
-    # TODO: log data model -> SVG
-    # TODO: check copilot agent for docstring generation
 
     safe_patch(
         autologging_integration=FLAVOR_NAME,

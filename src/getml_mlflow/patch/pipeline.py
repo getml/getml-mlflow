@@ -189,18 +189,9 @@ def fit(
             mlflow_client,
             run.id,
             pipeline,
-            log_parameters=logging_configuration.log_pipeline_parameters,
-            log_tags=logging_configuration.log_pipeline_tags,
-            log_scores=logging_configuration.log_pipeline_scores,
-            log_features=logging_configuration.log_pipeline_features,
-            log_columns=logging_configuration.log_pipeline_columns,
-            log_targets=logging_configuration.log_pipeline_targets,
-            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
+            logging_configuration=logging_configuration.pipeline,
         )
         pipeline_logger.log_constructor_arguments()
-
-        # TODO: log data model
-        #
 
     ###############
     # Log fit call
@@ -215,31 +206,24 @@ def fit(
             mlflow_client,
             fit_run.id,
             pipeline,
-            log_parameters=logging_configuration.log_pipeline_parameters,
-            log_tags=logging_configuration.log_pipeline_tags,
-            log_scores=logging_configuration.log_pipeline_scores,
-            log_features=logging_configuration.log_pipeline_features,
-            log_columns=logging_configuration.log_pipeline_columns,
-            log_targets=logging_configuration.log_pipeline_targets,
-            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
+            logging_configuration=logging_configuration.pipeline,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
                 fit_run.id,
-                log_information=logging_configuration.log_data_container_information,
-                log_as_artifact=logging_configuration.log_data_container_as_artifact,
+                logging_configuration=logging_configuration.data_container,
             )
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 data_container_logger.log_data_container(population_table, "Population")
             if (
-                logging_configuration.log_function_parameters
+                logging_configuration.function.log_parameters
                 and peripheral_tables is not None
             ):
                 data_container_logger.log_data_containers(
                     peripheral_tables, "Peripheral"
                 )
             if (
-                logging_configuration.log_function_parameters
+                logging_configuration.function.log_parameters
                 and validation_table is not None
             ):
                 data_container_logger.log_data_container(validation_table, "Validation")
@@ -297,24 +281,17 @@ def score(
             mlflow_client,
             score_run.id,
             pipeline,
-            log_parameters=logging_configuration.log_pipeline_parameters,
-            log_tags=logging_configuration.log_pipeline_tags,
-            log_scores=logging_configuration.log_pipeline_scores,
-            log_features=logging_configuration.log_pipeline_features,
-            log_columns=logging_configuration.log_pipeline_columns,
-            log_targets=logging_configuration.log_pipeline_targets,
-            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
+            logging_configuration=logging_configuration.pipeline,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
                 score_run.id,
-                log_information=logging_configuration.log_data_container_information,
-                log_as_artifact=logging_configuration.log_data_container_as_artifact,
+                logging_configuration=logging_configuration.data_container,
             )
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 data_container_logger.log_data_container(population_table, "Population")
             if (
-                logging_configuration.log_function_parameters
+                logging_configuration.function.log_parameters
                 and peripheral_tables is not None
             ):
                 data_container_logger.log_data_containers(
@@ -356,31 +333,24 @@ def predict(
             mlflow_client=mlflow_client,
             run_id=predict_run.id,
             pipeline=pipeline,
-            log_parameters=logging_configuration.log_pipeline_parameters,
-            log_tags=logging_configuration.log_pipeline_tags,
-            log_scores=logging_configuration.log_pipeline_scores,
-            log_features=logging_configuration.log_pipeline_features,
-            log_columns=logging_configuration.log_pipeline_columns,
-            log_targets=logging_configuration.log_pipeline_targets,
-            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
+            logging_configuration=logging_configuration.pipeline,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
                 predict_run.id,
-                log_information=logging_configuration.log_data_container_information,
-                log_as_artifact=logging_configuration.log_data_container_as_artifact,
+                logging_configuration=logging_configuration.data_container,
             )
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 data_container_logger.log_data_container(population_table, "Population")
             if (
-                logging_configuration.log_function_parameters
+                logging_configuration.function.log_parameters
                 and peripheral_tables is not None
             ):
                 data_container_logger.log_data_containers(
                     peripheral_tables, "Peripheral"
                 )
 
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 mlflow_client.log_param(
                     run_id=predict_run.id, key="table_name", value=table_name
                 )
@@ -388,7 +358,7 @@ def predict(
             predict_output: Union[NDArray[numpy.float_], None] = predict_method(
                 pipeline, population_table, peripheral_tables, table_name
             )
-            if logging_configuration.log_function_return and predict_output is not None:
+            if logging_configuration.function.log_return and predict_output is not None:
                 NumpyLogger(mlflow_client, predict_run.id).log_ndarray_as_artifact(
                     data=predict_output,
                     name="predict_output",
@@ -426,30 +396,23 @@ def transform(
             mlflow_client,
             transform_run.id,
             pipeline,
-            log_parameters=logging_configuration.log_pipeline_parameters,
-            log_tags=logging_configuration.log_pipeline_tags,
-            log_scores=logging_configuration.log_pipeline_scores,
-            log_features=logging_configuration.log_pipeline_features,
-            log_columns=logging_configuration.log_pipeline_columns,
-            log_targets=logging_configuration.log_pipeline_targets,
-            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
+            logging_configuration=logging_configuration.pipeline,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
                 transform_run.id,
-                log_information=logging_configuration.log_data_container_information,
-                log_as_artifact=logging_configuration.log_data_container_as_artifact,
+                logging_configuration=logging_configuration.data_container,
             )
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 data_container_logger.log_data_container(population_table, "Population")
             if (
-                logging_configuration.log_function_parameters
+                logging_configuration.function.log_parameters
                 and peripheral_tables is not None
             ):
                 data_container_logger.log_data_containers(
                     peripheral_tables, "Peripheral"
                 )
-            if logging_configuration.log_function_parameters:
+            if logging_configuration.function.log_parameters:
                 mlflow_client.log_batch(
                     transform_run.id,
                     params=[Param("df_name", df_name), Param("table_name", table_name)],
@@ -461,15 +424,14 @@ def transform(
                 )
             )
             if (
-                logging_configuration.log_function_return
+                logging_configuration.function.log_return
                 and transform_output is not None
             ):
                 if isinstance(transform_output, DataFrame):
                     DataContainerLogger.as_artifact(
                         mlflow_client,
                         transform_run.id,
-                        log_information=logging_configuration.log_data_container_information,
-                        log_as_artifact=logging_configuration.log_data_container_as_artifact,
+                        logging_configuration=logging_configuration.data_container,
                     ).log_data_container(
                         data_container=transform_output,
                         context="output",
