@@ -12,7 +12,7 @@ from getml.data import DataFrame, Subset
 from getml.pipeline import Pipeline, Scores
 from mlflow import MlflowClient
 from mlflow.entities import Param, RunStatus, RunTag
-from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
+from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_USER
 from numpy.typing import NDArray
 
 from getml_mlflow.data.dataframelike import DataFrameLike
@@ -22,6 +22,8 @@ from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetricsLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
+import getpass
+import socket
 
 
 class Run:
@@ -52,7 +54,10 @@ class Run:
         create_run_args: dict = {
             "experiment_id": self._experiment_id(),
             "run_name": self._name,
-            "tags": {"id": self._pipeline.id},
+            "tags": {
+                "id": self._pipeline.id,
+                MLFLOW_USER: f"{getpass.getuser()}@{socket.gethostname()}",
+            },
         }
         if parent_run_id := self._parent_run_id():
             create_run_args["tags"].update(
