@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from mlflow import MlflowClient
 
 import json
+import pathlib
 from dataclasses import fields, is_dataclass
 
 from getml.pipeline import Pipeline
@@ -33,6 +34,8 @@ PipelineParameter = CallableEnumFactory[Callable[[Pipeline], Any]].build(
     ),
 )
 
+from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
+
 
 class PipelineLogger:
     def __init__(
@@ -48,6 +51,7 @@ class PipelineLogger:
         log_columns: bool = True,
         log_targets: bool = True,
         log_as_artifact: bool = True,
+        getml_project_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
@@ -59,6 +63,7 @@ class PipelineLogger:
         self._log_columns: bool = log_columns
         self._log_targets: bool = log_targets
         self._log_as_artifact: bool = log_as_artifact
+        self._getml_project_path: pathlib.Path = getml_project_path
 
     def log_constructor_arguments(self) -> None:
         self.log_parameters()
@@ -247,4 +252,5 @@ class PipelineLogger:
             mlflowclient=self._mlflowclient,
             run_id=self._run_id,
             pipeline=self._pipeline,
+            projects_path=self._getml_project_path,
         )
