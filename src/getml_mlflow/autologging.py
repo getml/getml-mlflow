@@ -125,9 +125,7 @@ def autolog(
             manage_run=False,
         )
 
-    # TODO: Check folder Pipeline to Artifact to getML
     # TODO: log data model -> SVG
-    # TODO: add current user as name
     # TODO: check copilot agent for docstring generation
 
     safe_patch(
