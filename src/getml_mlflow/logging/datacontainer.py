@@ -114,7 +114,11 @@ class DataContainerLogger:
         if isinstance(data_container, DataFrameLikeT):
             self._log_dataframe_like(data_container, context)
         elif isinstance(data_container, Subset):
-            self._log_subset(data_container, context)
+            # Subset is a convenience case, usually used to transfer
+            # population and peripheral tables together as Population
+            # and then internally split into Population and Peripheral
+            # Therefore we remove the last context element, usually "Population"
+            self._log_subset(data_container, context[:-1])
 
     def _log_dataframe_like_as_input(
         self, dataframe_like: DataFrameLike, context: List[str]
