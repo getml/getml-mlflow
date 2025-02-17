@@ -134,7 +134,6 @@ def autolog(
         )
 
     # TODO: Check folder Pipeline to Artifact to getML
-    # TODO: Add project/pipeline path option to autologging
     # TODO: log data model -> SVG
     # TODO: add current user as name
     # TODO: check copilot agent for docstring generation

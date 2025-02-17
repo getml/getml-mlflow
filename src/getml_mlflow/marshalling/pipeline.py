@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import getml
 import mlflow
 import mlflow.client
+from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 
 
 def log_pipeline_as_artifact(
@@ -13,7 +14,7 @@ def log_pipeline_as_artifact(
     pipeline: getml.pipeline.Pipeline,
     *,
     project_name: Optional[str] = None,
-    projects_path: pathlib.Path = pathlib.Path.home() / ".getML" / "projects",
+    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> str:
     if project_name is None:
         project_name = getml.project.name
@@ -45,7 +46,7 @@ def download_artifact_pipeline(
     pipeline_id: str,
     *,
     original_project_name: Optional[str] = None,
-    projects_path: pathlib.Path = pathlib.Path.home() / ".getML" / "projects",
+    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> Tuple[str, str]:
     if original_project_name is None:
         original_project_name = getml.project.name
@@ -70,7 +71,7 @@ def switch_to_artifact_pipeline(
     pipeline_id: str,
     *,
     original_project_name: Optional[str] = None,
-    projects_path: pathlib.Path = pathlib.Path.home() / ".getML" / "projects",
+    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> getml.pipeline.Pipeline:
     if original_project_name is None:
         original_project_name = getml.project.name
