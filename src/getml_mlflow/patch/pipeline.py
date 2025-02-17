@@ -190,6 +190,7 @@ def fit(
             log_features=logging_configuration.log_pipeline_features,
             log_columns=logging_configuration.log_pipeline_columns,
             log_targets=logging_configuration.log_pipeline_targets,
+            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
         )
         pipeline_logger.log_constructor_arguments()
 
@@ -215,6 +216,7 @@ def fit(
             log_features=logging_configuration.log_pipeline_features,
             log_columns=logging_configuration.log_pipeline_columns,
             log_targets=logging_configuration.log_pipeline_targets,
+            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
@@ -296,6 +298,7 @@ def score(
             log_features=logging_configuration.log_pipeline_features,
             log_columns=logging_configuration.log_pipeline_columns,
             log_targets=logging_configuration.log_pipeline_targets,
+            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
@@ -354,6 +357,7 @@ def predict(
             log_features=logging_configuration.log_pipeline_features,
             log_columns=logging_configuration.log_pipeline_columns,
             log_targets=logging_configuration.log_pipeline_targets,
+            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,
@@ -423,6 +427,7 @@ def transform(
             log_features=logging_configuration.log_pipeline_features,
             log_columns=logging_configuration.log_pipeline_columns,
             log_targets=logging_configuration.log_pipeline_targets,
+            log_as_artifact=logging_configuration.log_pipeline_as_artifact,
         ):
             data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
                 mlflow_client,

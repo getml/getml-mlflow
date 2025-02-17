@@ -23,6 +23,7 @@ from mlflow.utils.time import get_current_time_millis
 from pydantic import TypeAdapter
 
 from getml_mlflow.logging.logger import log_exit_exception
+from getml_mlflow.marshalling.pipeline import log_pipeline_as_artifact
 from getml_mlflow.util.callableenum import CallableEnumFactory
 
 
@@ -58,6 +59,7 @@ class PipelineLogger:
         log_features: bool = True,
         log_columns: bool = True,
         log_targets: bool = True,
+        log_as_artifact: bool = True,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
@@ -68,6 +70,7 @@ class PipelineLogger:
         self._log_features: bool = log_features
         self._log_columns: bool = log_columns
         self._log_targets: bool = log_targets
+        self._log_as_artifact: bool = log_as_artifact
 
     def log_constructor_arguments(self) -> None:
         self.log_parameters()
@@ -78,6 +81,7 @@ class PipelineLogger:
         self.log_features()
         self.log_columns()
         self.log_targets()
+        self.log_pipeline_as_artifact()
 
     def __enter__(self) -> PipelineLogger:
         self.log_constructor_arguments()
