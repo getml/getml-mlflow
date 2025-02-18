@@ -21,6 +21,7 @@ class LoggingConfiguration:
     class Function:
         log_parameters: bool = True
         log_return: bool = True
+        log_as_trace: bool = True
 
     @dataclass
     class Pipeline:

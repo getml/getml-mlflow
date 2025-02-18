@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 from getml_mlflow.logging import (
     datacontainer,
+    function,
     logger,
     numpy,
     pipeline,
@@ -16,6 +17,7 @@ from getml_mlflow.logging import (
 
 __all__: List[str] = [
     "datacontainer",
+    "function",
     "logger",
     "numpy",
     "pipeline",

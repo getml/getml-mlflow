@@ -42,6 +42,7 @@ def autolog(
     log_data_container_as_artifact: bool = True,
     log_function_parameters: bool = True,
     log_function_return: bool = True,
+    log_function_as_trace: bool = True,
     log_pipeline_parameters: bool = True,
     log_pipeline_tags: bool = True,
     log_pipeline_scores: bool = True,
@@ -75,6 +76,7 @@ def autolog(
         function=LoggingConfiguration.Function(
             log_parameters=log_function_parameters,
             log_return=log_function_return,
+            log_as_trace=log_function_as_trace,
         ),
         pipeline=LoggingConfiguration.Pipeline(
             log_parameters=log_pipeline_parameters,
