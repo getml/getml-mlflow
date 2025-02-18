@@ -18,10 +18,11 @@ import getml
 import mlflow
 import mlflow.data.dataset
 import mlflow.data.dataset_source
-from mlflow.data.dataset_source import DatasetSource
 import mlflow.entities.dataset
 import mlflow.types
 from getml.data import DataFrame
+from getml.data.roles.container import Roles
+from getml.data.roles.types import Role
 from mlflow.data.dataset_source import DatasetSource
 from mlflow.types.schema import ColSpec, DataType, Schema
 from typing_extensions import override

@@ -17,7 +17,9 @@ from getml.pipeline import Pipeline
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 
+from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 from getml_mlflow.logging.logger import log_exit_exception
+from getml_mlflow.loggingconfiguration import LoggingConfiguration
 from getml_mlflow.marshalling.pipeline import log_pipeline_as_artifact
 from getml_mlflow.util.callableenum import CallableEnumFactory
 
@@ -33,9 +35,6 @@ PipelineParameter = CallableEnumFactory[Callable[[Pipeline], Any]].build(
         SHARE_SELECTED_FEATURES=lambda pipeline: pipeline.share_selected_features,
     ),
 )
-
-from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
-from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
 class PipelineLogger:

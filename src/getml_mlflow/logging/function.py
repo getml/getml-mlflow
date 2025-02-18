@@ -43,45 +43,12 @@ class FunctionLogger:
             arguments: OrderedDict[str, Any] = bound_arguments.arguments
 
             span: Optional[Span] = self.log_trace_start(function, arguments)
-            # if self._logging_configuration_function.log_as_trace:
-            #     span = self._mlflowclient.start_trace(
-            #         function.__name__,
-            #         inputs=arguments,
-            #         experiment_id=self._run.info.experiment_id,
-            #         attributes={
-            #             "pipeline": self._pipeline.id,
-            #             "run": self._run.info.run_id,
-            #         },
-            #         tags={
-            #             "pipeline": self._pipeline.id,
-            #             "run": self._run.info.run_id,
-            #         },
-            #     )
-            #     InMemoryTraceManager().get_instance().set_request_metadata(
-            #         span.request_id,
-            #         TraceMetadataKey().SOURCE_RUN,
-            #         self._run.info.run_id,
-            #     )
-
             self.log_parameters(arguments)
 
             output: Any = function(*args, **kwargs)
 
             self.log_return(output)
-
             self.log_trace_end(span, output)
-            # if self._logging_configuration_function.log_as_trace:
-            #     assert span
-            #     self._mlflowclient.end_trace(
-            #         span.request_id,
-            #         outputs={output.__class__.__name__: output},
-            #         attributes={
-            #             "pipeline": self._pipeline.id,
-            #         },
-            #     )
-            #     self._mlflowclient.set_trace_tag(
-            #         span.request_id, "pipeline", self._pipeline.id
-            #     )
 
             return output
 
