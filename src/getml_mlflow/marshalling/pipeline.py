@@ -87,5 +87,3 @@ def switch_to_artifact_pipeline(
     )
     getml.project.switch(project_name)
     return getml.pipeline.load(pipeline_id)
-    getml.project.switch(project_name)
-    return getml.pipeline.load(pipeline_id)
