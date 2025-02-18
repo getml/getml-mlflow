@@ -14,7 +14,6 @@ import getml
 import mlflow
 import mlflow.data.dataset
 import mlflow.data.dataset_source
-from mlflow.data.dataset_source import DatasetSource
 import mlflow.entities.dataset
 import mlflow.types
 from getml.data import DataFrame

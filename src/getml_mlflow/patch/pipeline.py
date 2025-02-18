@@ -13,20 +13,17 @@ import numpy
 from getml.data import DataFrame, Subset
 from getml.pipeline import Pipeline, Scores
 from mlflow import MlflowClient
-from mlflow.entities import Param, RunStatus, RunTag
-from mlflow.tracing.constant import TraceMetadataKey
-from mlflow.tracing.trace_manager import InMemoryTraceManager
+from mlflow.entities import RunStatus, RunTag
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_USER
 from numpy.typing import NDArray
 
 from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.datacontainer import DataContainerLogger
+from getml_mlflow.logging.function import FunctionLogger
 from getml_mlflow.logging.logger import log_exit_exception
-from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.logging.pipeline import PipelineLogger
 from getml_mlflow.logging.systemmetrics import SystemMetricsLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
-from getml_mlflow.logging.function import FunctionLogger
 
 
 class Run:
@@ -132,46 +129,6 @@ class Run:
         return self._run
 
 
-# def trace(
-#     mlflowclient: MlflowClient,
-#     run: Run,
-#     pipeline: getml.Pipeline,
-#     callable: Callable[..., Any],
-# ) -> Callable[..., Any]:
-#     def function(*args, **kwargs) -> Any:
-#         bound_arguments: inspect.BoundArguments = inspect.signature(callable).bind(
-#             *args, **kwargs
-#         )
-#         bound_arguments.apply_defaults()
-#         span: mlflow.entities.Span = mlflowclient.start_trace(
-#             callable.__name__,
-#             inputs=bound_arguments.arguments,
-#             experiment_id=run.info.experiment_id,
-#             attributes={
-#                 "pipeline": pipeline.id,
-#                 "run": run.id,
-#             },
-#             tags={
-#                 "pipeline": pipeline.id,
-#                 "run": run.id,
-#             },
-#         )
-#         InMemoryTraceManager.get_instance().set_request_metadata(
-#             span.request_id, TraceMetadataKey.SOURCE_RUN, run.id
-#         )
-#         output: Any = callable(*args, **kwargs)
-#         mlflowclient.end_trace(
-#             span.request_id,
-#             outputs={output.__class__.__name__: output},
-#             attributes={
-#                 "pipeline": pipeline.id,
-#             },
-#         )
-#         mlflowclient.set_trace_tag(span.request_id, "pipeline", pipeline.id)
-#
-#     return function
-
-
 def init(original: Callable, pipeline: Pipeline, *args, **kwargs) -> None:
     init_method: Callable = original
     if not hasattr(pipeline, "_mlflow_run_info"):
@@ -256,26 +213,6 @@ def fit(
             pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            # data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
-            #     mlflow_client,
-            #     fit_run.id,
-            #     logging_configuration=logging_configuration.data_container,
-            # )
-            # if logging_configuration.function.log_parameters:
-            #     data_container_logger.log_data_container(population_table, "Population")
-            # if (
-            #     logging_configuration.function.log_parameters
-            #     and peripheral_tables is not None
-            # ):
-            #     data_container_logger.log_data_containers(
-            #         peripheral_tables, "Peripheral"
-            #     )
-            # if (
-            #     logging_configuration.function.log_parameters
-            #     and validation_table is not None
-            # ):
-            #     data_container_logger.log_data_container(validation_table, "Validation")
-
             with SystemMetricsLogger(
                 mlflow_client,
                 fit_run.id,
@@ -337,21 +274,6 @@ def score(
             pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            # data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
-            #     mlflow_client,
-            #     score_run.id,
-            #     logging_configuration=logging_configuration.data_container,
-            # )
-            # if logging_configuration.function.log_parameters:
-            #     data_container_logger.log_data_container(population_table, "Population")
-            # if (
-            #     logging_configuration.function.log_parameters
-            #     and peripheral_tables is not None
-            # ):
-            #     data_container_logger.log_data_containers(
-            #         peripheral_tables, "Peripheral"
-            #     )
-
             score_output: getml.pipeline.Scores = FunctionLogger(
                 mlflow_client,
                 score_run.run,
@@ -393,26 +315,6 @@ def predict(
             pipeline=pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            # data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
-            #     mlflow_client,
-            #     predict_run.id,
-            #     logging_configuration=logging_configuration.data_container,
-            # )
-            # if logging_configuration.function.log_parameters:
-            #     data_container_logger.log_data_container(population_table, "Population")
-            # if (
-            #     logging_configuration.function.log_parameters
-            #     and peripheral_tables is not None
-            # ):
-            #     data_container_logger.log_data_containers(
-            #         peripheral_tables, "Peripheral"
-            #     )
-
-            # if logging_configuration.function.log_parameters:
-            #     mlflow_client.log_param(
-            #         run_id=predict_run.id, key="table_name", value=table_name
-            #     )
-
             predict_output: Union[NDArray[numpy.float_], None] = FunctionLogger(
                 mlflow_client,
                 predict_run.run,
@@ -422,11 +324,6 @@ def predict(
             ).log(
                 predict_method
             )(pipeline, population_table, peripheral_tables, table_name)
-            # if logging_configuration.function.log_return and predict_output is not None:
-            #     NumpyLogger(mlflow_client, predict_run.id).log_ndarray_as_artifact(
-            #         data=predict_output,
-            #         name="predict_output",
-            #     )
 
     return predict_output
 
@@ -462,26 +359,6 @@ def transform(
             pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            # data_container_logger: DataContainerLogger = DataContainerLogger.as_input(
-            #     mlflow_client,
-            #     transform_run.id,
-            #     logging_configuration=logging_configuration.data_container,
-            # )
-            # if logging_configuration.function.log_parameters:
-            #     data_container_logger.log_data_container(population_table, "Population")
-            # if (
-            #     logging_configuration.function.log_parameters
-            #     and peripheral_tables is not None
-            # ):
-            #     data_container_logger.log_data_containers(
-            #         peripheral_tables, "Peripheral"
-            #     )
-            # if logging_configuration.function.log_parameters:
-            #     mlflow_client.log_batch(
-            #         transform_run.id,
-            #         params=[Param("df_name", df_name), Param("table_name", table_name)],
-            #     )
-
             transform_output: Union[getml.DataFrame, NDArray[numpy.float_], None] = (
                 FunctionLogger(
                     mlflow_client,
@@ -493,24 +370,5 @@ def transform(
                     pipeline, population_table, peripheral_tables, df_name, table_name
                 )
             )
-            # if (
-            #     logging_configuration.function.log_return
-            #     and transform_output is not None
-            # ):
-            #     if isinstance(transform_output, getml.DataFrame):
-            #         DataContainerLogger.as_artifact(
-            #             mlflow_client,
-            #             transform_run.id,
-            #             logging_configuration=logging_configuration.data_container,
-            #         ).log_data_container(
-            #             data_container=transform_output,
-            #             context="output",
-            #         )
-            #     elif isinstance(transform_output, numpy.ndarray):
-            #         NumpyLogger(mlflow_client, transform_run.id).log_ndarray_as_artifact(
-            #             data=transform_output,
-            #             name="output",
-            #             artifact_path="output",
-            #         )
 
     return transform_output

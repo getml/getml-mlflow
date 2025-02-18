@@ -2,9 +2,11 @@ import pathlib
 import shutil
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
+
 import getml
 import mlflow
 import mlflow.client
+
 from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 
 
@@ -83,5 +85,7 @@ def switch_to_artifact_pipeline(
         original_project_name=original_project_name,
         projects_path=projects_path,
     )
+    getml.project.switch(project_name)
+    return getml.pipeline.load(pipeline_id)
     getml.project.switch(project_name)
     return getml.pipeline.load(pipeline_id)
