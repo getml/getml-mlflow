@@ -7,7 +7,7 @@ name = "getml-mlflow"
 version = "0.1.0"
 description = 'Integrate MLflow into getML'
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 keywords = []
 authors = [{ name = "Code17 GmbH", email = "hello@getml.com" }]
@@ -22,7 +22,7 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dependencies = ["pyyaml~=6.0", "mlflow~=2.17.0", "getml==1.5.0"]
+dependencies = ["pyyaml~=6.0", "mlflow~=2.20.2", "getml==1.5.0"]
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
