@@ -1,6 +1,11 @@
-from typing import Callable
+from __future__ import annotations
 
-from mlflow import MlflowClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Callable
+
+    from mlflow import MlflowClient
 
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 

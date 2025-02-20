@@ -1,12 +1,18 @@
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from __future__ import annotations
 
-import mlflow
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Dict, Optional
+
+from dataclasses import dataclass, field
+
+from mlflow import MlflowClient
 
 
 @dataclass
 class LoggingConfiguration:
-    mlflow_client: mlflow.MlflowClient = field(default_factory=mlflow.MlflowClient)
+    mlflow_client: MlflowClient = field(default_factory=MlflowClient)
     log_data_container_information: bool = True
     log_data_container_as_artifact: bool = True
     log_function_parameters: bool = True

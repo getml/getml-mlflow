@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Dict, List, Sequence, Union
+
+    from mlflow import MlflowClient
+    from mlflow.entities import Run
+
 from enum import StrEnum
 from functools import cached_property
 from tempfile import TemporaryDirectory
-from typing import Dict, List, Sequence, Union
 
-import getml
-import mlflow
-import mlflow.data.code_dataset_source
-import mlflow.data.pandas_dataset
-import mlflow.entities
+from getml.data import Subset
 from mlflow.entities import DatasetInput, InputTag
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
@@ -26,7 +29,7 @@ class DataContainerLogger:
     @classmethod
     def as_artifact(
         cls,
-        mlflow_client: mlflow.MlflowClient,
+        mlflow_client: MlflowClient,
         run_id: str,
         *,
         log_information: bool = True,
@@ -43,7 +46,7 @@ class DataContainerLogger:
     @classmethod
     def as_input(
         cls,
-        mlflow_client: mlflow.MlflowClient,
+        mlflow_client: MlflowClient,
         run_id: str,
         *,
         log_information: bool = True,
@@ -59,16 +62,16 @@ class DataContainerLogger:
 
     def __init__(
         self,
-        mlflow_client: mlflow.MlflowClient,
+        mlflow_client: MlflowClient,
         run_id: str,
         target: DataContainerLoggerTarget,
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
     ) -> None:
-        self._mlflow_client: mlflow.MlflowClient = mlflow_client
+        self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
-        self._run: mlflow.entities.Run = self._mlflow_client.get_run(run_id)
+        self._run: Run = self._mlflow_client.get_run(run_id)
         self._target: DataContainerLoggerTarget = target
         self._log_information: bool = log_information
         self._log_as_artifact: bool = log_as_artifact
@@ -109,14 +112,14 @@ class DataContainerLogger:
 
     def log_data_container(
         self,
-        data_container: Union[DataFrameLike, getml.data.Subset],
+        data_container: Union[DataFrameLike, Subset],
         context: Union[str, List[str]],
     ) -> None:
         if isinstance(context, str):
             context = [context]
-        if isinstance(data_container, (getml.data.DataFrame, getml.data.View)):
+        if isinstance(data_container, DataFrameLike):
             self._log_dataframe_like(data_container, context)
-        elif isinstance(data_container, getml.data.Subset):
+        elif isinstance(data_container, Subset):
             self._log_subset(data_container, context)
 
     def _log_dataframe_like_as_input(
@@ -164,7 +167,7 @@ class DataContainerLogger:
                 self._run_id, dataset.as_dict(), f"{artifact_path}/{dataset.name}.json"
             )
 
-    def _log_subset(self, subset: getml.data.Subset, context: List[str]) -> None:
+    def _log_subset(self, subset: Subset, context: List[str]) -> None:
         self._log_dataframe_like(subset.population, context + ["Population"])
 
         for name, table in subset.peripheral.items():

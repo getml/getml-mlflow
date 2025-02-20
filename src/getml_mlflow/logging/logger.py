@@ -1,49 +1,77 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from logging import Logger
+    from types import TracebackType
+    from typing import Optional, Type
+
+    from mlflow import MlflowClient
+
 import logging
-from datetime import datetime
-from types import TracebackType
-from typing import Optional, Type
+import logging.config
+from datetime import datetime, timezone
 
-import mlflow
+logger: Logger = logging.getLogger(__name__)
 
 
-def set_up():
-    logger = logging.getLogger("getML")
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        fmt="{asctime} {levelname} getML: {message}",
-        style="{",
+def set_up() -> None:
+    logger_name: str = __name__.split(".")[0]
+    logging.config.dictConfig(
+        {
+            "version": 1,
+            "formatters": {
+                "default": {
+                    "format": logging.BASIC_FORMAT,
+                    "style": "%",
+                },
+            },
+            "handlers": {
+                "console": {
+                    "class": "logging.StreamHandler",
+                    "formatter": "default",
+                },
+            },
+            "loggers": {
+                logger_name: {
+                    "handlers": ["console"],
+                },
+            },
+            "root": {
+                "handlers": ["console"],
+            },
+        }
     )
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
 
 
 def log_exit_exception(
-    mlflowclient: mlflow.MlflowClient,
+    mlflow_client: MlflowClient,
     run_id: Optional[str],
     exc_type: Type[BaseException],
     exc_val: BaseException,
     exc_tb: Optional[TracebackType],
-):
+) -> None:
     if run_id is not None:
-        mlflowclient.log_text(
+        mlflow_client.log_text(
             run_id=run_id,
             text=f"Exception: {exc_type}: {exc_val}",
-            artifact_file=f"error/{datetime.utcnow().isoformat()}.log",
+            artifact_file=f"error/{datetime.now(timezone.utc).isoformat()}.log",
         )
-    logging.getLogger("getML").error(
+    logger.error(
         f"Exception: {exc_type}: {exc_val}",
         exc_info=(exc_type, exc_val, exc_tb),
     )
 
 
 def log_request_exception(
-    mlflowclient: mlflow.MlflowClient,
+    mlflow_client: MlflowClient,
     run_id: str,
     exception: BaseException,
     context: str,
-):
-    mlflowclient.log_text(
+) -> None:
+    mlflow_client.log_text(
         run_id=run_id,
         text=f"Exception: {context}: {exception}",
-        artifact_file=f"error/{datetime.utcnow().isoformat()}.log",
+        artifact_file=f"error/{datetime.now(timezone.utc).isoformat()}.log",
     )

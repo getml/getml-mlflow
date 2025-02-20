@@ -46,7 +46,7 @@ def autolog(
     extra_tags: Optional[Dict[str, str]] = None,
     getml_project_path: Optional[str] = None,
     tracking_uri: Optional[str] = None,
-):
+) -> None:
     if disable:
         revert_patches(FLAVOR_NAME)
         return

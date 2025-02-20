@@ -1,18 +1,25 @@
-from tempfile import TemporaryDirectory
-from typing import Optional
+from __future__ import annotations
 
-import mlflow
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Optional
+
+    from mlflow import MlflowClient
+    from numpy.typing import NDArray
+
+from tempfile import TemporaryDirectory
+
 import numpy
-from numpy.typing import NDArray
 
 
 class NumpyLogger:
     def __init__(
         self,
-        mlflow_client: mlflow.MlflowClient,
+        mlflow_client: MlflowClient,
         run_id: str,
     ) -> None:
-        self._mlflow_client: mlflow.MlflowClient = mlflow_client
+        self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
 
     def log_ndarray_as_artifact(
