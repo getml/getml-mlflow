@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 import mlflow
@@ -6,7 +6,7 @@ import mlflow
 
 @dataclass
 class LoggingConfiguration:
-    mlflowclient: mlflow.MlflowClient = mlflow.MlflowClient()
+    mlflowclient: mlflow.MlflowClient = field(default_factory=mlflow.MlflowClient)
     log_data_container_information: bool = True
     log_data_container_as_artifact: bool = True
     log_function_parameters: bool = True
