@@ -141,7 +141,7 @@ def fit(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> getml.Pipeline:
-    mlflowclient = logging_configuration.mlflowclient
+    mlflowclient = logging_configuration.mlflow_client
     fit_method: Callable = original
 
     with Run(
@@ -249,7 +249,7 @@ def score(
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ):
     score_method: Callable = original
-    mlflowclient = logging_configuration.mlflowclient
+    mlflowclient = logging_configuration.mlflow_client
 
     with Run(
         mlflowclient=mlflowclient,
@@ -306,7 +306,7 @@ def predict(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Union[NDArray[numpy.float_], None]:
-    mlflowclient = logging_configuration.mlflowclient
+    mlflowclient = logging_configuration.mlflow_client
     predict_method: Callable = original
 
     with Run(
@@ -375,7 +375,7 @@ def transform(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Union[getml.DataFrame, NDArray[numpy.float_], None]:
-    mlflowclient = logging_configuration.mlflowclient
+    mlflowclient = logging_configuration.mlflow_client
     transform_method: Callable = original
 
     with Run(

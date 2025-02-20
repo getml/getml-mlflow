@@ -56,7 +56,7 @@ def autolog(
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflowclient=mlflow.MlflowClient(tracking_uri=tracking_uri),
+        mlflow_client=mlflow.MlflowClient(tracking_uri=tracking_uri),
         log_data_container_information=log_data_container_information,
         log_data_container_as_artifact=log_data_container_as_artifact,
         log_function_parameters=log_function_parameters,

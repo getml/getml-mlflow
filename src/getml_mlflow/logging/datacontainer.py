@@ -26,14 +26,14 @@ class DataContainerLogger:
     @classmethod
     def as_artifact(
         cls,
-        mlflowclient: mlflow.MlflowClient,
+        mlflow_client: mlflow.MlflowClient,
         run_id: str,
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
     ) -> DataContainerLogger:
         return cls(
-            mlflowclient,
+            mlflow_client,
             run_id,
             DataContainerLoggerTarget.ARTIFACT,
             log_information=log_information,
@@ -43,14 +43,14 @@ class DataContainerLogger:
     @classmethod
     def as_input(
         cls,
-        mlflowclient: mlflow.MlflowClient,
+        mlflow_client: mlflow.MlflowClient,
         run_id: str,
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
     ) -> DataContainerLogger:
         return cls(
-            mlflowclient,
+            mlflow_client,
             run_id,
             DataContainerLoggerTarget.INPUT,
             log_information=log_information,
@@ -59,16 +59,16 @@ class DataContainerLogger:
 
     def __init__(
         self,
-        mlflowclient: mlflow.MlflowClient,
+        mlflow_client: mlflow.MlflowClient,
         run_id: str,
         target: DataContainerLoggerTarget,
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
     ) -> None:
-        self._mlflowclient: mlflow.MlflowClient = mlflowclient
+        self._mlflow_client: mlflow.MlflowClient = mlflow_client
         self._run_id: str = run_id
-        self._run: mlflow.entities.Run = self._mlflowclient.get_run(run_id)
+        self._run: mlflow.entities.Run = self._mlflow_client.get_run(run_id)
         self._target: DataContainerLoggerTarget = target
         self._log_information: bool = log_information
         self._log_as_artifact: bool = log_as_artifact
@@ -132,11 +132,11 @@ class DataContainerLogger:
             dataset=dataset._to_mlflow_entity(),
             tags=[InputTag(key=MLFLOW_DATASET_CONTEXT, value=dataset_context)],
         )
-        self._mlflowclient.log_inputs(
+        self._mlflow_client.log_inputs(
             run_id=self._run_id,
             datasets=[dataset_input],
         )
-        self._mlflowclient.log_dict(
+        self._mlflow_client.log_dict(
             self._run_id,
             dataset.as_dict(),
             f"input/dataset/{dataset_context}.{dataset.name}.json",
@@ -151,7 +151,7 @@ class DataContainerLogger:
                 filename: str = dataframelike.get_name(dataframe_like) + ".parquet"
                 local_path: str = f"{temp_dir}/{filename}"
                 dataframe_like.to_parquet(local_path)
-                self._mlflowclient.log_artifact(
+                self._mlflow_client.log_artifact(
                     run_id=self._run_id,
                     local_path=local_path,
                     artifact_path=artifact_path,
@@ -160,7 +160,7 @@ class DataContainerLogger:
             dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(
                 dataframe_like
             )
-            self._mlflowclient.log_dict(
+            self._mlflow_client.log_dict(
                 self._run_id, dataset.as_dict(), f"{artifact_path}/{dataset.name}.json"
             )
 

@@ -6,7 +6,7 @@ import mlflow
 
 @dataclass
 class LoggingConfiguration:
-    mlflowclient: mlflow.MlflowClient = field(default_factory=mlflow.MlflowClient)
+    mlflow_client: mlflow.MlflowClient = field(default_factory=mlflow.MlflowClient)
     log_data_container_information: bool = True
     log_data_container_as_artifact: bool = True
     log_function_parameters: bool = True

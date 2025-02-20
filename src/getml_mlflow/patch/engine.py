@@ -1,5 +1,7 @@
 from typing import Callable
 
+from mlflow import MlflowClient
+
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
@@ -9,10 +11,10 @@ def set_project(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
-    mlflowclient = logging_configuration.mlflowclient
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
     set_project_method: Callable = original
 
     set_project_method(name)
 
-    if not mlflowclient.search_experiments(filter_string=f"name='{name}'"):
-        mlflowclient.create_experiment(name=name)
+    if not mlflow_client.search_experiments(filter_string=f"name='{name}'"):
+        mlflow_client.create_experiment(name=name)
