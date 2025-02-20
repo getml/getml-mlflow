@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from enum import StrEnum
+from functools import cached_property
 from tempfile import TemporaryDirectory
-from typing import Callable, Dict, List, Sequence, Union
+from typing import Dict, List, Sequence, Union
 
 import getml
 import mlflow
 import mlflow.data.code_dataset_source
 import mlflow.data.pandas_dataset
+import mlflow.entities
 from mlflow.entities import DatasetInput, InputTag
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
@@ -27,7 +31,7 @@ class DataContainerLogger:
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
-    ):
+    ) -> DataContainerLogger:
         return cls(
             mlflowclient,
             run_id,
@@ -44,7 +48,7 @@ class DataContainerLogger:
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
-    ):
+    ) -> DataContainerLogger:
         return cls(
             mlflowclient,
             run_id,
@@ -61,32 +65,32 @@ class DataContainerLogger:
         *,
         log_information: bool = True,
         log_as_artifact: bool = True,
-    ):
+    ) -> None:
         self._mlflowclient: mlflow.MlflowClient = mlflowclient
         self._run_id: str = run_id
-        self._run = self._mlflowclient.get_run(run_id)
-        self._seperator: Callable[[], str] = self._get_seperator(target)
-        self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
-            self._get_log_dataframe_like(target)
-        )
+        self._run: mlflow.entities.Run = self._mlflowclient.get_run(run_id)
+        self._target: DataContainerLoggerTarget = target
         self._log_information: bool = log_information
         self._log_as_artifact: bool = log_as_artifact
 
-    def _get_seperator(self, target: DataContainerLoggerTarget):
-        if target == DataContainerLoggerTarget.ARTIFACT:
-            return self._artifact_path_seperator
-        elif target == DataContainerLoggerTarget.INPUT:
-            return self._input_context_seperator
+    @cached_property
+    def _separator(self) -> str:
+        if self._target == DataContainerLoggerTarget.ARTIFACT:
+            return "/"
+        elif self._target == DataContainerLoggerTarget.INPUT:
+            return "."
         else:
-            raise ValueError(f"Unknown target: {target}")
+            raise ValueError(f"Unknown target: {self._target}")
 
-    def _get_log_dataframe_like(self, target: DataContainerLoggerTarget):
-        if target == DataContainerLoggerTarget.ARTIFACT:
-            return self._log_dataframe_like_as_artifact
-        elif target == DataContainerLoggerTarget.INPUT:
-            return self._log_dataframe_like_as_input
+    def _log_dataframe_like(
+        self, dataframe_like: DataFrameLike, context: List[str]
+    ) -> None:
+        if self._target == DataContainerLoggerTarget.ARTIFACT:
+            return self._log_dataframe_like_as_artifact(dataframe_like, context)
+        elif self._target == DataContainerLoggerTarget.INPUT:
+            return self._log_dataframe_like_as_input(dataframe_like, context)
         else:
-            raise ValueError(f"Unknown target: {target}")
+            raise ValueError(f"Unknown target: {self._target}")
 
     def log_data_containers(
         self,
@@ -110,7 +114,7 @@ class DataContainerLogger:
     ) -> None:
         if isinstance(context, str):
             context = [context]
-        if isinstance(data_container, (getml.DataFrame, getml.data.View)):
+        if isinstance(data_container, (getml.data.DataFrame, getml.data.View)):
             self._log_dataframe_like(data_container, context)
         elif isinstance(data_container, getml.data.Subset):
             self._log_subset(data_container, context)
@@ -123,7 +127,7 @@ class DataContainerLogger:
 
         dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(dataframe_like)
 
-        dataset_context: str = self._seperator().join(context)
+        dataset_context: str = self._separator.join(context)
         dataset_input: DatasetInput = DatasetInput(
             dataset=dataset._to_mlflow_entity(),
             tags=[InputTag(key=MLFLOW_DATASET_CONTEXT, value=dataset_context)],
@@ -141,7 +145,7 @@ class DataContainerLogger:
     def _log_dataframe_like_as_artifact(
         self, dataframe_like: DataFrameLike, context: List[str]
     ) -> None:
-        artifact_path: str = self._seperator().join(context)
+        artifact_path: str = self._separator.join(context)
         if self._log_as_artifact:
             with TemporaryDirectory() as temp_dir:
                 filename: str = dataframelike.get_name(dataframe_like) + ".parquet"
@@ -165,9 +169,3 @@ class DataContainerLogger:
 
         for name, table in subset.peripheral.items():
             self._log_dataframe_like(table, context + ["Peripheral", name])
-
-    def _artifact_path_seperator(self) -> str:
-        return "/"
-
-    def _input_context_seperator(self) -> str:
-        return "."
