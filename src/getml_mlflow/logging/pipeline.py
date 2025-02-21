@@ -1,33 +1,44 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Callable, Literal
+
+if TYPE_CHECKING:
+    from types import TracebackType
+    from typing import Dict, List, Optional, Type, Union
+
+    from getml.pipeline import Scores
+    from mlflow import MlflowClient
+
 import json
 from dataclasses import fields, is_dataclass
-from types import TracebackType
-from typing import Any, Dict, List, Literal, Optional, Type, Union
 
-import getml
-import mlflow
-import mlflow.entities
+from getml.pipeline import Pipeline
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 
 from getml_mlflow.logging.logger import log_exit_exception
+from getml_mlflow.util.callableenum import CallableEnumFactory
+
+PipelineParameter = CallableEnumFactory[Callable[[Pipeline], Any]].build(
+    "PipelineParameter",
+    dict(
+        PREPROCESSORS=lambda pipeline: pipeline.preprocessors,
+        FEATURE_LEARNERS=lambda pipeline: pipeline.feature_learners,
+        FEATURE_SELECTORS=lambda pipeline: pipeline.feature_selectors,
+        PREDICTORS=lambda pipeline: pipeline.predictors,
+        LOSS_FUNCTION=lambda pipeline: pipeline.loss_function,
+        INCLUDE_CATEGORICAL=lambda pipeline: pipeline.include_categorical,
+        SHARE_SELECTED_FEATURES=lambda pipeline: pipeline.share_selected_features,
+    ),
+)
 
 
 class PipelineLogger:
-    PARAMETER_NAMES = (
-        "preprocessors",
-        "feature_learners",
-        "feature_selectors",
-        "predictors",
-        "loss_function",
-        "include_categorical",
-        "share_selected_features",
-    )
-
     def __init__(
         self,
-        mlflowclient: mlflow.MlflowClient,
+        mlflow_client: MlflowClient,
         run_id: str,
-        pipeline: getml.Pipeline,
+        pipeline: Pipeline,
         *,
         log_parameters: bool = True,
         log_tags: bool = True,
@@ -36,9 +47,9 @@ class PipelineLogger:
         log_columns: bool = True,
         log_targets: bool = True,
     ) -> None:
-        self._mlflowclient: mlflow.MlflowClient = mlflowclient
+        self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
-        self._pipeline: getml.Pipeline = pipeline
+        self._pipeline: Pipeline = pipeline
         self._log_parameters: bool = log_parameters
         self._log_tags: bool = log_tags
         self._log_scores: bool = log_scores
@@ -56,7 +67,7 @@ class PipelineLogger:
         self.log_columns()
         self.log_targets()
 
-    def __enter__(self) -> "PipelineLogger":
+    def __enter__(self) -> PipelineLogger:
         self.log_constructor_arguments()
         return self
 
@@ -68,7 +79,7 @@ class PipelineLogger:
     ) -> None:
         if exc_type is not None and exc_value is not None:
             log_exit_exception(
-                self._mlflowclient, self._run_id, exc_type, exc_value, exc_traceback
+                self._mlflow_client, self._run_id, exc_type, exc_value, exc_traceback
             )
         else:
             self.log_generated_information()
@@ -79,8 +90,9 @@ class PipelineLogger:
 
         parameters: List[Param] = []
 
-        for parameter_name in self.PARAMETER_NAMES:
-            parameter = getattr(self._pipeline, parameter_name)
+        for pipeline_parameter in PipelineParameter:
+            parameter: Any = pipeline_parameter.value(self._pipeline)
+            parameter_name: str = pipeline_parameter.name.lower()
             if is_dataclass(type(parameter)):
                 parameters.extend(self._serialize_dataclass(parameter_name, parameter))
             elif isinstance(parameter, list):
@@ -93,12 +105,12 @@ class PipelineLogger:
             else:
                 parameters.append(Param(parameter_name, str(parameter)))
 
-        self._mlflowclient.log_batch(run_id=self._run_id, params=parameters)
+        self._mlflow_client.log_batch(run_id=self._run_id, params=parameters)
 
     def _serialize_dataclass(self, name: str, parameter: Any) -> List[Param]:
         parameters: List[Param] = []
 
-        current_name: str = parameter.__class__.__name__
+        current_name: str = type(parameter).__name__
         for field in fields(parameter):
             full_field_name: str = f"{name}.{current_name}.{field.name}"
             field_value: Any = getattr(parameter, field.name)
@@ -132,7 +144,7 @@ class PipelineLogger:
             else:
                 tags.append(RunTag(tag, tag))
 
-        self._mlflowclient.log_batch(run_id=self._run_id, tags=tags)
+        self._mlflow_client.log_batch(run_id=self._run_id, tags=tags)
 
     def log_scores(self) -> None:
         if not self._log_scores:
@@ -140,7 +152,7 @@ class PipelineLogger:
 
         metrics: List[Metric] = []
 
-        scores = self._pipeline.scores
+        scores: Scores = self._pipeline.scores
 
         if self._pipeline.is_classification:
             metrics.extend(self._serialize_metric("auc", scores.auc, 2))
@@ -154,7 +166,7 @@ class PipelineLogger:
             metrics.extend(self._serialize_metric("rmse", scores.rmse))
             metrics.extend(self._serialize_metric("rsquared", scores.rsquared, 2))
 
-        self._mlflowclient.log_batch(run_id=self._run_id, metrics=metrics)
+        self._mlflow_client.log_batch(run_id=self._run_id, metrics=metrics)
 
     # TODO: Find better way to log and display features
     def log_features(self) -> None:
@@ -170,7 +182,7 @@ class PipelineLogger:
                 feature.correlation for feature in self._pipeline.features
             ],
         }
-        self._mlflowclient.log_table(
+        self._mlflow_client.log_table(
             self._run_id, data, f"output/pipeline.{self._pipeline.id}.features.json"
         )
 
@@ -186,7 +198,7 @@ class PipelineLogger:
                 column.importance for column in self._pipeline.columns
             ],
         }
-        self._mlflowclient.log_table(
+        self._mlflow_client.log_table(
             self._run_id, data, f"output/pipeline.{self._pipeline.id}.columns.json"
         )
 
@@ -194,7 +206,7 @@ class PipelineLogger:
         if not self._log_targets:
             return
 
-        self._mlflowclient.log_param(self._run_id, "targets", self._pipeline.targets)
+        self._mlflow_client.log_param(self._run_id, "targets", self._pipeline.targets)
 
     def _serialize_metric(
         self, name: str, values: float | List[float], ndigits: Optional[int] = None

@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Any, Callable, Dict, Optional
+
 import functools
-from typing import Dict, Optional
 
 import getml
 import mlflow
+from mlflow import MlflowClient
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
 
@@ -12,10 +19,12 @@ from getml_mlflow.loggingconfiguration import LoggingConfiguration
 from getml_mlflow.patch import engine, pipeline
 
 
-def with_logging_configuration(logging_configuration: LoggingConfiguration):
-    def decorator(func):
+def with_logging_configuration(
+    logging_configuration: LoggingConfiguration,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, **kwargs) -> Any:
             return func(*args, **kwargs, logging_configuration=logging_configuration)
 
         return wrapper
@@ -56,7 +65,7 @@ def autolog(
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflow_client=mlflow.MlflowClient(tracking_uri=tracking_uri),
+        mlflow_client=MlflowClient(tracking_uri=tracking_uri),
         log_data_container_information=log_data_container_information,
         log_data_container_as_artifact=log_data_container_as_artifact,
         log_function_parameters=log_function_parameters,

@@ -1,34 +1,40 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from logging import Logger
     from types import TracebackType
-    from typing import Dict, List, Optional, Type
+    from typing import List, Optional, Type
 
     from mlflow import MlflowClient
     from requests import Response
 
 import logging
-from enum import Enum
+from collections import namedtuple
 from threading import Event, Thread
 
-import getml
-import mlflow
-import mlflow.entities
 import mlflow.utils.time
 import numpy
 import requests
+from getml.constants import ENTERPRISE_DOCS_URL
+from mlflow.entities import Metric
+from requests.exceptions import RequestException
 
 from getml_mlflow.logging.logger import log_exit_exception, log_request_exception
+from getml_mlflow.util.callableenum import CallableEnumFactory
 
 logger: Logger = logging.getLogger(__name__)
 
 
-class Metric(str, Enum):
-    CPU_USAGE = "engine_cpu_usage_per_virtual_core_in_pct"
-    MEMORY_USAGE = "memory_usage_in_pct"
+EngineMetric = CallableEnumFactory[Callable[[str], str]].build(
+    "EngineMetric",
+    dict(
+        ENGINE_CPU_USAGE_PER_VIRTUAL_CORE_IN_PCT=lambda url: f"{url}/getcpuusage/",
+        MEMORY_USAGE_IN_PCT=lambda url: f"{url}/getmemoryusage/",
+    ),
+)
+ValidEngineMetric = namedtuple("ValidEngineMetric", ["name", "url"])
 
 
 class SystemMetricsLogger:
@@ -48,42 +54,40 @@ class SystemMetricsLogger:
         self._event: Event = Event()
         self._thread: Optional[Thread] = None
 
-        url: str = f"http://{host}:{port}"
-        self._metrics_endpoints: Dict[Metric, str] = {
-            Metric.CPU_USAGE: f"{url}/getcpuusage/",
-            Metric.MEMORY_USAGE: f"{url}/getmemoryusage/",
-        }
+        self._url: str = f"http://{host}:{port}"
         self._mlflow_client: MlflowClient = mlflow_client
         self._log_system_metrics: bool = log_system_metrics
 
     def _run_logging_metrics(self) -> None:
         step: int = 0
-        metrics_endpoints: Dict[Metric, str] = self._valid_metrics_endpoints()
+        valid_engine_metrics: List[ValidEngineMetric] = self._valid_metrics()
         while not self._event.is_set():
-            self._log_metrics(step, metrics_endpoints)
+            self._log_metrics(step, valid_engine_metrics)
             step += 1
             self._event.wait(1)
 
-    def _log_metrics(self, step: int, metrics_endpoints: Dict[Metric, str]) -> None:
-        metrics: List[mlflow.entities.Metric] = []
+    def _log_metrics(
+        self, step: int, valid_engine_metrics: List[ValidEngineMetric]
+    ) -> None:
+        metrics: List[Metric] = []
         timestamp: int = mlflow.utils.time.get_current_time_millis()
-        for metric_name, metric_url in metrics_endpoints.items():
+        for engine_metric_name, engine_metric_url in valid_engine_metrics:
             try:
-                response: Response = requests.get(metric_url)
+                response: Response = requests.get(engine_metric_url)
                 metrics.append(
-                    mlflow.entities.Metric(
-                        key=metric_name.value,
+                    Metric(
+                        key=engine_metric_name,
                         value=numpy.round(response.json()["data"][0][-1], 2),
                         timestamp=timestamp,
                         step=step,
                     )
                 )
-            except requests.exceptions.RequestException as exception:
+            except RequestException as exception:
                 log_request_exception(
                     self._mlflow_client,
                     self._run_id,
                     exception,
-                    f"GET({metric_url})",
+                    f"GET({engine_metric_url})",
                 )
                 continue
         if metrics:
@@ -92,13 +96,18 @@ class SystemMetricsLogger:
                 metrics=metrics,
             )
 
-    def _valid_metrics_endpoints(self) -> Dict[Metric, str]:
-        valid_metrics_endpoints: Dict[Metric, str] = {}
-        for name, endpoint in self._metrics_endpoints.items():
+    def _valid_metrics(self) -> List[ValidEngineMetric]:
+        valid_engine_metrics: List[ValidEngineMetric] = []
+        for engine_metric in EngineMetric:
+            engine_metric_endpoint: str = engine_metric.value(self._url)
             try:
-                response: Response = requests.get(endpoint)
+                response: Response = requests.get(engine_metric_endpoint)
                 if response.ok:
-                    valid_metrics_endpoints[name] = endpoint
+                    valid_engine_metrics.append(
+                        ValidEngineMetric(
+                            engine_metric.name.lower(), engine_metric_endpoint
+                        )
+                    )
                 else:
                     response.raise_for_status()
             except requests.exceptions.RequestException as exception:
@@ -106,14 +115,14 @@ class SystemMetricsLogger:
                     self._mlflow_client,
                     self._run_id,
                     exception,
-                    f"GET({endpoint})",
+                    f"GET({engine_metric_endpoint})",
                 )
                 logger.warning(
-                    f"Engine metrics ({endpoint}) are available in the Enterprise edition. "
-                    f"Visit {getml.constants.ENTERPRISE_DOCS_URL} for more information"
+                    f"Engine metrics ({engine_metric_endpoint}) are available in the Enterprise edition. "
+                    f"Visit {ENTERPRISE_DOCS_URL} for more information"
                 )
                 continue
-        return valid_metrics_endpoints
+        return valid_engine_metrics
 
     def __enter__(self) -> SystemMetricsLogger:
         if not self._log_system_metrics:
