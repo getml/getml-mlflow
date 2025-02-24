@@ -21,6 +21,7 @@ from getml.constants import ENTERPRISE_DOCS_URL
 from mlflow.entities import Metric
 from requests.exceptions import RequestException
 
+from getml_mlflow.constants import DEFAULT_GETML_HOST, DEFAULT_GETML_PORT
 from getml_mlflow.logging.logger import log_exit_exception, log_request_exception
 from getml_mlflow.util.callableenum import CallableEnumFactory
 
@@ -38,8 +39,8 @@ ValidEngineMetric = namedtuple("ValidEngineMetric", ["name", "url"])
 
 
 class SystemMetricsLogger:
-    HOST: str = "localhost"
-    PORT: int = 1709
+    HOST: str = DEFAULT_GETML_HOST
+    PORT: int = DEFAULT_GETML_PORT
 
     def __init__(
         self,

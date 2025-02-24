@@ -6,9 +6,10 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Callable, Dict, Optional, Sequence, Type, Union
 
-    from getml.data import Subset
+    from getml.data import DataFrame, Subset
     from getml.pipeline import Pipeline, Scores
     from mlflow import MlflowClient
+    from numpy.typing import NDArray
 
     from getml_mlflow.data.dataframelike import DataFrameLike
 
@@ -19,13 +20,9 @@ import getml
 import mlflow
 import mlflow.entities
 import numpy
-from getml.data import DataFrame
-from mlflow import MlflowClient
 from mlflow.entities import RunStatus, RunTag
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_USER
-from numpy.typing import NDArray
 
-from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.function import FunctionLogger
 from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.logging.pipeline import PipelineLogger
@@ -50,7 +47,7 @@ class Run:
         self._create_runs: bool = create_runs
         self._extra_tags: Dict[str, str] = extra_tags or {}
 
-    def __enter__(self) -> "Run":
+    def __enter__(self) -> Run:
         if not self._create_runs:
             self._run = mlflow.active_run()
             if self._run is None:
@@ -145,8 +142,11 @@ def init(original: Callable, pipeline: Pipeline, *args, **kwargs) -> None:
 
 
 def load(
-    original: Callable, name: str, *, logging_configuration: LoggingConfiguration
-) -> getml.Pipeline:
+    original: Callable,
+    name: str,
+    *,
+    logging_configuration: LoggingConfiguration = LoggingConfiguration(),
+) -> Pipeline:
     mlflow_client: MlflowClient = logging_configuration.mlflow_client
     load_method: Callable = original
 
@@ -225,12 +225,12 @@ def fit(
                 fit_run.id,
                 log_system_metrics=logging_configuration.log_system_metrics,
             ):
-                fit_output: getml.Pipeline = FunctionLogger(
+                fit_output: Pipeline = FunctionLogger(
                     mlflow_client,
                     fit_run.run,
                     pipeline,
-                    logging_configuration.function,
-                    logging_configuration.data_container,
+                    logging_configuration_function=logging_configuration.function,
+                    logging_configuration_data_container=logging_configuration.data_container,
                 ).log(fit_method)(
                     pipeline,
                     population_table,
@@ -266,7 +266,7 @@ def score(
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Scores:
     score_method: Callable = original
-    mlflow_client: Mlflow_Client = logging_configuration.mlflow_client
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
 
     with Run(
         mlflow_client=mlflow_client,
@@ -281,12 +281,12 @@ def score(
             pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            score_output: getml.pipeline.Scores = FunctionLogger(
+            score_output: Scores = FunctionLogger(
                 mlflow_client,
                 score_run.run,
                 pipeline,
-                logging_configuration.function,
-                logging_configuration.data_container,
+                logging_configuration_function=logging_configuration.function,
+                logging_configuration_data_container=logging_configuration.data_container,
             ).log(score_method)(pipeline, population_table, peripheral_tables)
 
     return score_output
@@ -306,7 +306,7 @@ def predict(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Union[NDArray[numpy.float_], None]:
-    mlflow_client: Mlflow_Client = logging_configuration.mlflow_client
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
     predict_method: Callable = original
 
     with Run(
@@ -326,8 +326,8 @@ def predict(
                 mlflow_client,
                 predict_run.run,
                 pipeline,
-                logging_configuration.function,
-                logging_configuration.data_container,
+                logging_configuration_function=logging_configuration.function,
+                logging_configuration_data_container=logging_configuration.data_container,
             ).log(
                 predict_method
             )(pipeline, population_table, peripheral_tables, table_name)
@@ -350,7 +350,7 @@ def transform(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Union[DataFrame, NDArray[numpy.float_], None]:
-    mlflow_client: Mlflow_Client = logging_configuration.mlflow_client
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
     transform_method: Callable = original
 
     with Run(
@@ -366,13 +366,13 @@ def transform(
             pipeline,
             logging_configuration=logging_configuration.pipeline,
         ):
-            transform_output: Union[getml.DataFrame, NDArray[numpy.float_], None] = (
+            transform_output: Union[DataFrame, NDArray[numpy.float_], None] = (
                 FunctionLogger(
                     mlflow_client,
                     transform_run.run,
                     pipeline,
-                    logging_configuration.function,
-                    logging_configuration.data_container,
+                    logging_configuration_function=logging_configuration.function,
+                    logging_configuration_data_container=logging_configuration.data_container,
                 ).log(transform_method)(
                     pipeline, population_table, peripheral_tables, df_name, table_name
                 )

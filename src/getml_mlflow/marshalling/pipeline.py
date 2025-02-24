@@ -1,22 +1,29 @@
-import pathlib
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Optional, Tuple
+
+    from getml.pipeline import Pipeline
+    from mlflow.client import MlflowClient
+
 import shutil
+from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple
 
 import getml
-import mlflow
-import mlflow.client
 
 from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 
 
 def log_pipeline_as_artifact(
-    mlflowclient: mlflow.client.MlflowClient,
+    mlflow_client: MlflowClient,
     run_id: str,
-    pipeline: getml.pipeline.Pipeline,
+    pipeline: Pipeline,
     *,
     project_name: Optional[str] = None,
-    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
+    projects_path: Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> str:
     if project_name is None:
         project_name = getml.project.name
@@ -30,56 +37,54 @@ def log_pipeline_as_artifact(
             if item.stem == "data":
                 continue
             if item.stem == "pipelines":
-                mlflowclient.log_artifact(
+                mlflow_client.log_artifact(
                     run_id,
                     item / pipeline.id,
                     f"{artifact_path}/pipelines",
                 )
                 continue
 
-        mlflowclient.log_artifact(run_id, item, f"{artifact_path}")
+        mlflow_client.log_artifact(run_id, item, artifact_path)
 
     return pipeline.id
 
 
 def download_artifact_pipeline(
-    mlflowclient: mlflow.client.MlflowClient,
+    mlflow_client: MlflowClient,
     run_id: str,
     pipeline_id: str,
     *,
     original_project_name: Optional[str] = None,
-    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
+    projects_path: Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> Tuple[str, str]:
     if original_project_name is None:
         original_project_name = getml.project.name
 
     with TemporaryDirectory() as temp_dir:
-        mlflowclient.download_artifacts(
+        mlflow_client.download_artifacts(
             run_id, f"pipeline/{original_project_name}", temp_dir
         )
         new_project_name: str = f"{original_project_name}-{pipeline_id}"
-        project_path: pathlib.Path = projects_path / new_project_name
-        temp_project_path: pathlib.Path = (
-            pathlib.Path(temp_dir) / "pipeline" / original_project_name
-        )
+        project_path: Path = projects_path / new_project_name
+        temp_project_path: Path = Path(temp_dir) / "pipeline" / original_project_name
         shutil.move(temp_project_path, project_path)
 
     return (new_project_name, pipeline_id)
 
 
 def switch_to_artifact_pipeline(
-    mlflowclient: mlflow.client.MlflowClient,
+    mlflow_client: MlflowClient,
     run_id: str,
     pipeline_id: str,
     *,
     original_project_name: Optional[str] = None,
-    projects_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
-) -> getml.pipeline.Pipeline:
+    projects_path: Path = DEFAULT_GETML_PROJECTS_PATH,
+) -> Pipeline:
     if original_project_name is None:
         original_project_name = getml.project.name
 
     project_name, pipeline_id = download_artifact_pipeline(
-        mlflowclient=mlflowclient,
+        mlflow_client=mlflow_client,
         run_id=run_id,
         pipeline_id=pipeline_id,
         original_project_name=original_project_name,

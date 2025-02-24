@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import List
 
-from getml_mlflow.util import callableenum
+from getml_mlflow.util import callableenum, with_kwargs
 
 __all__: List[str] = [
     "callableenum",
+    "with_kwargs",
 ]

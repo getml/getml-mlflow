@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Optional
+    from typing import Any, Callable, Dict, List, Optional
 
 import functools
 
@@ -14,9 +15,79 @@ from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
 
 import getml_mlflow.logging.logger
+from getml_mlflow.constants import DEFAULT_MLFLOW_TRACKING_URI
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 from getml_mlflow.patch import engine, pipeline, project
+from getml_mlflow.util.with_kwargs import with_kwargs
+
+
+@dataclass
+class SafePatchFunction:
+    destination: Any
+    function_name: str
+    patch_function: Any
+    with_logging_configuration: bool = True
+
+
+FUNCTIONS_TO_PATCH: List[SafePatchFunction] = [
+    SafePatchFunction(
+        destination=getml,
+        function_name="set_project",
+        patch_function=engine.set_project,
+    ),
+    SafePatchFunction(
+        destination=getml.engine,
+        function_name="set_project",
+        patch_function=engine.set_project,
+    ),
+    SafePatchFunction(
+        destination=getml.engine.helpers,
+        function_name="set_project",
+        patch_function=engine.set_project,
+    ),
+    SafePatchFunction(
+        destination=getml.project.attrs,
+        function_name="switch",
+        patch_function=project.switch,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.Pipeline,
+        function_name="__init__",
+        patch_function=pipeline.init,
+        with_logging_configuration=False,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline,
+        function_name="load",
+        patch_function=pipeline.load,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.helpers2,
+        function_name="load",
+        patch_function=pipeline.load,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.Pipeline,
+        function_name="fit",
+        patch_function=pipeline.fit,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.Pipeline,
+        function_name="score",
+        patch_function=pipeline.score,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.Pipeline,
+        function_name="predict",
+        patch_function=pipeline.predict,
+    ),
+    SafePatchFunction(
+        destination=getml.pipeline.Pipeline,
+        function_name="transform",
+        patch_function=pipeline.transform,
+    ),
+]
 
 
 def with_logging_configuration(
@@ -30,9 +101,6 @@ def with_logging_configuration(
         return wrapper
 
     return decorator
-
-
-DEFAULT_MLFLOW_TRACKING_URI = "http://localhost:5000"
 
 
 @autologging_integration(FLAVOR_NAME)
@@ -68,7 +136,7 @@ def autolog(
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflow_client=mlflow.MlflowClient(tracking_uri=tracking_uri),
+        mlflow_client=MlflowClient(tracking_uri=tracking_uri),
         data_container=LoggingConfiguration.DataContainer(
             log_information=log_data_container_information,
             log_as_artifact=log_data_container_as_artifact,
@@ -95,80 +163,17 @@ def autolog(
         getml_project_path=getml_project_path,
     )
 
-    for destination in (getml, getml.engine, getml.engine.helpers):
+    for function in FUNCTIONS_TO_PATCH:
         safe_patch(
             autologging_integration=FLAVOR_NAME,
-            destination=destination,
-            function_name="set_project",
-            patch_function=with_logging_configuration(logging_configuration)(
-                engine.set_project
+            destination=function.destination,
+            function_name=function.function_name,
+            patch_function=(
+                with_kwargs(logging_configuration=logging_configuration)(
+                    function.patch_function
+                )
+                if function.with_logging_configuration
+                else function.patch_function
             ),
             manage_run=False,
         )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.project.attrs,
-        function_name="switch",
-        patch_function=with_logging_configuration(logging_configuration)(
-            project.switch
-        ),
-        manage_run=False,
-    )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="__init__",
-        patch_function=pipeline.init,
-        manage_run=False,
-    )
-
-    for destination in (getml.pipeline, getml.pipeline.helpers2):
-        safe_patch(
-            autologging_integration=FLAVOR_NAME,
-            destination=destination,
-            function_name="load",
-            patch_function=with_logging_configuration(logging_configuration)(
-                pipeline.load
-            ),
-            manage_run=False,
-        )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="fit",
-        patch_function=with_logging_configuration(logging_configuration)(pipeline.fit),
-        manage_run=False,
-    )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="score",
-        patch_function=with_logging_configuration(logging_configuration)(
-            pipeline.score
-        ),
-        manage_run=False,
-    )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="predict",
-        patch_function=with_logging_configuration(logging_configuration)(
-            pipeline.predict
-        ),
-        manage_run=False,
-    )
-
-    safe_patch(
-        autologging_integration=FLAVOR_NAME,
-        destination=getml.pipeline.Pipeline,
-        function_name="transform",
-        patch_function=with_logging_configuration(logging_configuration)(
-            pipeline.transform
-        ),
-        manage_run=False,
-    )

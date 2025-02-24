@@ -240,7 +240,7 @@ class PipelineLogger:
             return
 
         log_pipeline_as_artifact(
-            mlflowclient=self._mlflowclient,
+            mlflow_client=self._mlflow_client,
             run_id=self._run_id,
             pipeline=self._pipeline,
             projects_path=self._getml_project_path,
@@ -250,7 +250,7 @@ class PipelineLogger:
         if not self._logging_configuration.log_data_model:
             return
 
-        self._mlflowclient.log_text(
+        self._mlflow_client.log_text(
             run_id=self._run_id,
             text=self._pipeline.data_model._repr_html_(),
             artifact_file="input/data_model.html",
