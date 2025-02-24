@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -11,18 +12,13 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union
 
 import getml
-import mlflow
-import mlflow.data.dataset
-import mlflow.data.dataset_source
-import mlflow.entities.dataset
-import mlflow.types
 from getml.data import DataFrame
-from getml.data.roles.container import Roles
-from getml.data.roles.types import Role
+from mlflow.data.dataset import Dataset
 from mlflow.data.dataset_source import DatasetSource
 from mlflow.types.schema import ColSpec, DataType, Schema
 from typing_extensions import override
 
+from getml_mlflow.constants import DEFAULT_GETML_HOST, DEFAULT_GETML_PORT
 from getml_mlflow.data import dataframelike
 from getml_mlflow.data.dataframelike import DataFrameLike, DataFrameLikeT
 
@@ -92,7 +88,7 @@ class GetMLDatasetSource(DatasetSource):
 
         return {
             # TODO: Extract URL to a default URL and make it configurable
-            "url": f"http://localhost:1709/#/getdataframe/{project_name}/{dataframe_name}/",
+            "url": f"http://{DEFAULT_GETML_HOST}:{DEFAULT_GETML_PORT}/#/getdataframe/{project_name}/{dataframe_name}/",
             "dataframe_name": dataframe_name,
             "project_name": project_name,
             "roles": self._dataframe.roles.to_dict(),
@@ -104,7 +100,7 @@ class GetMLDatasetSource(DatasetSource):
         return cls.from_getml(source_dict["dataframe_name"], source_dict["roles"])
 
 
-class GetMLDataset(mlflow.data.dataset.Dataset):
+class GetMLDataset(Dataset):
     GETML_ROLE_TO_MLFLOW_TYPE: Dict[str, DataType] = {
         "categorical": DataType.string,
         "join_key": DataType.string,
@@ -198,22 +194,22 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
     def schema(self) -> Optional[Any]:
         return Schema(
             [
-                self._to_colspec(name, type)
-                for (name, type) in self._dataframe_like.roles.to_mapping().items()
+                self._to_colspec(name, role)
+                for (name, role) in self._dataframe_like.roles.to_mapping().items()
             ]
         )
 
-    def _to_colspec(self, name: str, type: str) -> ColSpec:
+    def _to_colspec(self, name: str, role: str) -> ColSpec:
         return ColSpec(
-            type=self.GETML_ROLE_TO_MLFLOW_TYPE[type],
-            name=f"{self.GETML_ROLE_TO_EMOJI[type]} {name}",
-            required=not type.startswith("unused_"),
+            type=self.GETML_ROLE_TO_MLFLOW_TYPE[role],
+            name=f"{self.GETML_ROLE_TO_EMOJI[role]} {name}",
+            required=not role.startswith("unused_"),
         )
 
     def _resolve_source(self, dataframe_like: DataFrameLike) -> DatasetSource:
         return GetMLDatasetSource.from_dataframe_like(dataframe_like)
 
-    @property
+    @cached_property
     def _roles(self) -> Dict[str, str]:
         return {
             key: str(value)

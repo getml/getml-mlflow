@@ -10,9 +10,9 @@ from mlflow import MlflowClient
 from mlflow.entities import DatasetInput, InputTag, Run
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
-from getml_mlflow.data import dataframelike, getml_dataset
+from getml_mlflow.data import dataframelike
 from getml_mlflow.data.dataframelike import DataFrameLike, DataFrameLikeT
-
+from getml_mlflow.data.getml_dataset import GetMLDataset
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 
@@ -64,10 +64,6 @@ class DataContainerLogger:
         self._run_id: str = run_id
         self._run: Run = self._mlflow_client.get_run(run_id)
         self._target: DataContainerLoggerTarget = target
-        self._seperator: Callable[[], str] = self._get_seperator(target)
-        self._log_dataframe_like: Callable[[DataFrameLike, List[str]], None] = (
-            self._get_log_dataframe_like(target)
-        )
         self._logging_configuration: LoggingConfiguration.DataContainer = (
             logging_configuration
         )
@@ -128,7 +124,7 @@ class DataContainerLogger:
         if not self._logging_configuration.log_information:
             return
 
-        dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(dataframe_like)
+        dataset: GetMLDataset = GetMLDataset(dataframe_like)
 
         dataset_context: str = self._separator.join(context)
         dataset_input: DatasetInput = DatasetInput(
@@ -160,9 +156,7 @@ class DataContainerLogger:
                     artifact_path=artifact_path,
                 )
         if self._logging_configuration.log_information:
-            dataset: getml_dataset.GetMLDataset = getml_dataset.GetMLDataset(
-                dataframe_like
-            )
+            dataset: GetMLDataset = GetMLDataset(dataframe_like)
             self._mlflow_client.log_dict(
                 self._run_id, dataset.as_dict(), f"{artifact_path}/{dataset.name}.json"
             )

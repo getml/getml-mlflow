@@ -1,6 +1,11 @@
-from typing import Callable
+from __future__ import annotations
 
-from mlflow import MlflowClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Callable
+
+    from mlflow import MlflowClient
 
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
@@ -11,10 +16,10 @@ def switch(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
-    mlflowclient: MlflowClient = logging_configuration.mlflowclient
+    mlflow_client: MlflowClient = logging_configuration.mlflow_client
     switch_method: Callable = original
 
     switch_method(name)
 
-    if not mlflowclient.search_experiments(filter_string=f"name='{name}'"):
-        mlflowclient.create_experiment(name=name)
+    if not mlflow_client.search_experiments(filter_string=f"name='{name}'"):
+        mlflow_client.create_experiment(name=name)

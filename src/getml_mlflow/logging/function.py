@@ -1,12 +1,24 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, Sequence, Union
+
+if TYPE_CHECKING:
+    from inspect import BoundArguments
+    from logging import Logger
+    from typing import Any, Callable, Optional, OrderedDict
+
+    from mlflow import MlflowClient
+    from mlflow.entities import Run, Span
+
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Dict, Optional, OrderedDict, Sequence, Union
 
-import getml
 import numpy
-from mlflow import MlflowClient
-from mlflow.entities import Param, Run, Span
+from getml import Pipeline
+from getml.data import DataFrame, Subset
+from getml.pipeline import Scores
+from mlflow.entities import Param
 from mlflow.tracing.constant import TraceMetadataKey
 from mlflow.tracing.trace_manager import InMemoryTraceManager
 
@@ -15,19 +27,22 @@ from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
+logger: Logger = logging.getLogger(__name__)
+
 
 class FunctionLogger:
     def __init__(
         self,
         mlflowclient: MlflowClient,
         run: Run,
-        pipeline: getml.Pipeline,
-        logging_configuration_function: LoggingConfiguration.Function,
-        logging_configuration_data_container: LoggingConfiguration.DataContainer,
+        pipeline: Pipeline,
+        *,
+        logging_configuration_function: LoggingConfiguration.Function = LoggingConfiguration.Function(),
+        logging_configuration_data_container: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
     ) -> None:
         self._mlflowclient: MlflowClient = mlflowclient
         self._run: Run = run
-        self._pipeline: getml.Pipeline = pipeline
+        self._pipeline: Pipeline = pipeline
         self._logging_configuration_function: LoggingConfiguration.Function = (
             logging_configuration_function
         )
@@ -36,7 +51,7 @@ class FunctionLogger:
     def log(self, function: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(function)
         def wrapper(*args, **kwargs) -> Any:
-            bound_arguments: inspect.BoundArguments = inspect.signature(function).bind(
+            bound_arguments: BoundArguments = inspect.signature(function).bind(
                 *args, **kwargs
             )
             bound_arguments.apply_defaults()
@@ -64,7 +79,7 @@ class FunctionLogger:
                 value,
                 Union[
                     DataFrameLike,
-                    getml.data.Subset,
+                    Subset,
                 ],
             )
             or (
@@ -91,7 +106,7 @@ class FunctionLogger:
             if argument_name == "self":
                 continue
 
-            if isinstance(argument_value, Union[DataFrameLike, getml.data.Subset]):
+            if isinstance(argument_value, Union[DataFrameLike, Subset]):
                 assert data_container_logger
                 data_container_logger.log_data_container(
                     argument_value, [argument_name]
@@ -125,7 +140,7 @@ class FunctionLogger:
         if not self._logging_configuration_function.log_return or output is None:
             return
 
-        if isinstance(output, getml.DataFrame):
+        if isinstance(output, DataFrame):
             DataContainerLogger.as_artifact(
                 self._mlflowclient,
                 self._run.info.run_id,
@@ -142,13 +157,11 @@ class FunctionLogger:
                 name="output",
                 artifact_path="output",
             )
-        elif isinstance(output, Union[getml.Pipeline, getml.pipeline.Scores]):
-            # Return values of type getml.Pipeline and getml.pipeline.Scores are not logged.
+        elif isinstance(output, Union[Pipeline, Scores]):
+            # Return values of type Pipeline and Scores are not logged.
             pass
         else:
-            logging.getLogger("getML").info(
-                "Missing return logging for type '{}'", type(output)
-            )
+            logger.info("Missing return logging for type '%s'", type(output))
 
     def log_trace_start(
         self, function: Callable[..., Any], arguments: OrderedDict[str, Any]
@@ -169,9 +182,9 @@ class FunctionLogger:
                 "run": self._run.info.run_id,
             },
         )
-        InMemoryTraceManager().get_instance().set_request_metadata(
+        InMemoryTraceManager.get_instance().set_request_metadata(
             span.request_id,
-            TraceMetadataKey().SOURCE_RUN,
+            TraceMetadataKey.SOURCE_RUN,
             self._run.info.run_id,
         )
         return span
