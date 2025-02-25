@@ -14,7 +14,6 @@ from mlflow import MlflowClient
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
 
-import getml_mlflow.logging.logger
 from getml_mlflow.constants import DEFAULT_MLFLOW_TRACKING_URI
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
@@ -131,7 +130,6 @@ def autolog(
         revert_patches(FLAVOR_NAME)
         return
 
-    getml_mlflow.logging.logger.set_up()
     tracking_uri = tracking_uri or DEFAULT_MLFLOW_TRACKING_URI
     mlflow.set_tracking_uri(tracking_uri)
 

@@ -10,39 +10,9 @@ if TYPE_CHECKING:
     from mlflow import MlflowClient
 
 import logging
-import logging.config
 from datetime import datetime, timezone
 
 logger: Logger = logging.getLogger(__name__)
-
-
-def set_up() -> None:
-    logger_name: str = __name__.split(".")[0]
-    logging.config.dictConfig(
-        {
-            "version": 1,
-            "formatters": {
-                "default": {
-                    "format": logging.BASIC_FORMAT,
-                    "style": "%",
-                },
-            },
-            "handlers": {
-                "console": {
-                    "class": "logging.StreamHandler",
-                    "formatter": "default",
-                },
-            },
-            "loggers": {
-                logger_name: {
-                    "handlers": ["console"],
-                },
-            },
-            "root": {
-                "handlers": ["console"],
-            },
-        }
-    )
 
 
 def log_exit_exception(
