@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import is_dataclass
+from pathlib import Path
 from types import TracebackType
 from typing import (
     Any,
@@ -15,7 +16,6 @@ from typing import (
     Union,
     runtime_checkable,
 )
-import pathlib
 
 from getml.pipeline import Pipeline, Scores
 from mlflow import MlflowClient
@@ -57,7 +57,7 @@ class PipelineLogger:
         pipeline: Pipeline,
         *,
         logging_configuration: LoggingConfiguration.Pipeline = LoggingConfiguration.Pipeline(),
-        getml_project_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
+        getml_project_path: Path = DEFAULT_GETML_PROJECTS_PATH,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
@@ -65,7 +65,7 @@ class PipelineLogger:
         self._logging_configuration: LoggingConfiguration.Pipeline = (
             logging_configuration
         )
-        self._getml_project_path: pathlib.Path = getml_project_path
+        self._getml_project_path: Path = getml_project_path
 
     def log_constructor_arguments(self) -> None:
         self.log_parameters()
@@ -246,7 +246,6 @@ class PipelineLogger:
                 step=0,
             )
         ]
-
 
     def log_pipeline_as_artifact(self) -> None:
         if not self._logging_configuration.log_as_artifact:
