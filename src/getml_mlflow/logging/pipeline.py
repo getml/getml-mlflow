@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from types import TracebackType
     from typing import Dict, List, Optional, Type, Union
 
@@ -10,7 +11,6 @@ if TYPE_CHECKING:
     from mlflow import MlflowClient
 
 import json
-import pathlib
 from dataclasses import fields, is_dataclass
 
 from getml.pipeline import Pipeline
@@ -45,7 +45,7 @@ class PipelineLogger:
         pipeline: Pipeline,
         *,
         logging_configuration: LoggingConfiguration.Pipeline = LoggingConfiguration.Pipeline(),
-        getml_project_path: pathlib.Path = DEFAULT_GETML_PROJECTS_PATH,
+        getml_project_path: Path = DEFAULT_GETML_PROJECTS_PATH,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
@@ -53,7 +53,7 @@ class PipelineLogger:
         self._logging_configuration: LoggingConfiguration.Pipeline = (
             logging_configuration
         )
-        self._getml_project_path: pathlib.Path = getml_project_path
+        self._getml_project_path: Path = getml_project_path
 
     def log_constructor_arguments(self) -> None:
         self.log_parameters()
