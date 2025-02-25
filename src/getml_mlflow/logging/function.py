@@ -10,9 +10,9 @@ if TYPE_CHECKING:
     from mlflow import MlflowClient
     from mlflow.entities import Run, Span
 
-import functools
 import inspect
 import logging
+from functools import cached_property, wraps
 
 import numpy
 from getml import Pipeline
@@ -49,7 +49,7 @@ class FunctionLogger:
         self._logging_configuration_data_container: LoggingConfiguration.DataContainer = logging_configuration_data_container
 
     def log(self, function: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(function)
+        @wraps(function)
         def wrapper(*args, **kwargs) -> Any:
             bound_arguments: BoundArguments = inspect.signature(function).bind(
                 *args, **kwargs
@@ -73,47 +73,17 @@ class FunctionLogger:
         if not self._logging_configuration_function.log_parameters:
             return
 
-        data_container_logger: Optional[DataContainerLogger] = None
-        if any(
-            isinstance(
-                value,
-                Union[
-                    DataFrameLike,
-                    Subset,
-                ],
-            )
-            or (
-                isinstance(value, Sequence)
-                and all(isinstance(element, DataFrameLike) for element in value)
-            )
-            or (
-                isinstance(value, Dict)
-                and all(
-                    isinstance(element, DataFrameLike) for element in arguments.values()
-                )
-            )
-            for value in arguments.values()
-        ):
-            data_container_logger = DataContainerLogger.as_input(
-                self._mlflowclient,
-                self._run.info.run_id,
-                logging_configuration=self._logging_configuration_data_container,
-            )
-
         parameters: Dict[str, Any] = {}
 
         for argument_name, argument_value in arguments.items():
             if argument_name == "self":
-                continue
-
-            if isinstance(argument_value, Union[DataFrameLike, Subset]):
-                assert data_container_logger
-                data_container_logger.log_data_container(
+                # Don't log self.
+                pass
+            elif isinstance(argument_value, Union[DataFrameLike, Subset]):
+                self._input_data_container_logger.log_data_container(
                     argument_value, [argument_name]
                 )
-                continue
-
-            if (
+            elif (
                 isinstance(argument_value, Sequence)
                 and all(
                     isinstance(element, DataFrameLike) for element in argument_value
@@ -125,34 +95,48 @@ class FunctionLogger:
                     for element in argument_value.values()
                 )
             ):
-                assert data_container_logger
-                data_container_logger.log_data_containers(argument_value, argument_name)
-                continue
-
-            parameters[argument_name] = str(argument_value)
+                self._input_data_container_logger.log_data_containers(
+                    argument_value, argument_name
+                )
+            else:
+                parameters[argument_name] = str(argument_value)
 
         self._mlflowclient.log_batch(
             self._run.info.run_id,
             params=[Param(key, value) for key, value in parameters.items()],
         )
 
+    @cached_property
+    def _input_data_container_logger(self) -> DataContainerLogger:
+        return DataContainerLogger.as_input(
+            self._mlflowclient,
+            self._run.info.run_id,
+            logging_configuration=self._logging_configuration_data_container,
+        )
+
+    @cached_property
+    def _artifact_data_container_logger(self) -> DataContainerLogger:
+        return DataContainerLogger.as_artifact(
+            self._mlflowclient,
+            self._run.info.run_id,
+            logging_configuration=self._logging_configuration_data_container,
+        )
+
+    @cached_property
+    def _numpy_logger(self) -> NumpyLogger:
+        return NumpyLogger(self._mlflowclient, self._run.info.run_id)
+
     def log_return(self, output: Any) -> None:
         if not self._logging_configuration_function.log_return or output is None:
             return
 
         if isinstance(output, DataFrame):
-            DataContainerLogger.as_artifact(
-                self._mlflowclient,
-                self._run.info.run_id,
-                logging_configuration=self._logging_configuration_data_container,
-            ).log_data_container(
+            self._artifact_data_container_logger.log_data_container(
                 data_container=output,
                 context="output",
             )
         elif isinstance(output, numpy.ndarray):
-            NumpyLogger(
-                self._mlflowclient, self._run.info.run_id
-            ).log_ndarray_as_artifact(
+            self._numpy_logger.log_ndarray_as_artifact(
                 data=output,
                 name="output",
                 artifact_path="output",
