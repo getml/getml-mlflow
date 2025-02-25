@@ -33,14 +33,14 @@ logger: Logger = logging.getLogger(__name__)
 class FunctionLogger:
     def __init__(
         self,
-        mlflowclient: MlflowClient,
+        mlflow_client: MlflowClient,
         run: Run,
         pipeline: Pipeline,
         *,
         logging_configuration_function: LoggingConfiguration.Function = LoggingConfiguration.Function(),
         logging_configuration_data_container: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
     ) -> None:
-        self._mlflowclient: MlflowClient = mlflowclient
+        self._mlflow_client: MlflowClient = mlflow_client
         self._run: Run = run
         self._pipeline: Pipeline = pipeline
         self._logging_configuration_function: LoggingConfiguration.Function = (
@@ -101,7 +101,7 @@ class FunctionLogger:
             else:
                 parameters[argument_name] = str(argument_value)
 
-        self._mlflowclient.log_batch(
+        self._mlflow_client.log_batch(
             self._run.info.run_id,
             params=[Param(key, value) for key, value in parameters.items()],
         )
@@ -109,7 +109,7 @@ class FunctionLogger:
     @cached_property
     def _input_data_container_logger(self) -> DataContainerLogger:
         return DataContainerLogger.as_input(
-            self._mlflowclient,
+            self._mlflow_client,
             self._run.info.run_id,
             logging_configuration=self._logging_configuration_data_container,
         )
@@ -117,14 +117,14 @@ class FunctionLogger:
     @cached_property
     def _artifact_data_container_logger(self) -> DataContainerLogger:
         return DataContainerLogger.as_artifact(
-            self._mlflowclient,
+            self._mlflow_client,
             self._run.info.run_id,
             logging_configuration=self._logging_configuration_data_container,
         )
 
     @cached_property
     def _numpy_logger(self) -> NumpyLogger:
-        return NumpyLogger(self._mlflowclient, self._run.info.run_id)
+        return NumpyLogger(self._mlflow_client, self._run.info.run_id)
 
     def log_return(self, output: Any) -> None:
         if not self._logging_configuration_function.log_return or output is None:
@@ -153,7 +153,7 @@ class FunctionLogger:
         if not self._logging_configuration_function.log_as_trace:
             return None
 
-        span: Span = self._mlflowclient.start_trace(
+        span: Span = self._mlflow_client.start_trace(
             function.__name__,
             inputs=arguments,
             experiment_id=self._run.info.experiment_id,
@@ -177,11 +177,13 @@ class FunctionLogger:
         if not self._logging_configuration_function.log_as_trace or span is None:
             return
 
-        self._mlflowclient.end_trace(
+        self._mlflow_client.end_trace(
             span.request_id,
             outputs={output.__class__.__name__: output},
             attributes={
                 "pipeline": self._pipeline.id,
             },
         )
-        self._mlflowclient.set_trace_tag(span.request_id, "pipeline", self._pipeline.id)
+        self._mlflow_client.set_trace_tag(
+            span.request_id, "pipeline", self._pipeline.id
+        )
