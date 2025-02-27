@@ -32,7 +32,7 @@ def with_logging_configuration(
     return decorator
 
 
-DEFAULT_MLFOW_TRACKING_URI = "http://localhost:5000"
+DEFAULT_MLFLOW_TRACKING_URI = "http://localhost:5000"
 
 
 @autologging_integration(FLAVOR_NAME)
@@ -61,7 +61,7 @@ def autolog(
         return
 
     getml_mlflow.logging.logger.set_up()
-    tracking_uri = tracking_uri or DEFAULT_MLFOW_TRACKING_URI
+    tracking_uri = tracking_uri or DEFAULT_MLFLOW_TRACKING_URI
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(

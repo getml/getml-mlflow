@@ -137,13 +137,13 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
     @override
     def _compute_digest(self) -> str:
         # TODO: Get unique identifier from dataframe_like
-        datafame_like_information: List[str] = [
+        dataframe_like_information: List[str] = [
             dataframelike.get_name(self._dataframe_like),
             str(self._dataframe_like.ncols()),
             str(self._dataframe_like.nrows()),
         ] + self._dataframe_like.colnames
         dataframe_like_hash: _Hash = hashlib.md5()
-        for info in datafame_like_information:
+        for info in dataframe_like_information:
             dataframe_like_hash.update(info.encode())
 
         # Add current time to hash to make it unique as we don't have a unique identifier for the whole dataframe_like
