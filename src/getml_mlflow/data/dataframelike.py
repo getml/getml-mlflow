@@ -5,6 +5,7 @@ from typing import Union
 from getml.data import DataFrame, View
 
 DataFrameLike = Union[DataFrame, View]
+DataFrameLikeT = (DataFrame, View)
 
 
 def get_name(dataframe_like: DataFrameLike) -> str:

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from hashlib import _Hash
+
 import hashlib
 import json
 from datetime import datetime, timezone
-from hashlib import _Hash
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -21,7 +25,7 @@ from mlflow.types.schema import ColSpec, DataType, Schema
 from typing_extensions import override
 
 from getml_mlflow.data import dataframelike
-from getml_mlflow.data.dataframelike import DataFrameLike
+from getml_mlflow.data.dataframelike import DataFrameLike, DataFrameLikeT
 
 
 class GetMLDatasetSource(DatasetSource):
@@ -68,12 +72,12 @@ class GetMLDatasetSource(DatasetSource):
     @override
     @staticmethod
     def _can_resolve(raw_source: Any) -> bool:
-        return isinstance(raw_source, Union[str, DataFrameLike])
+        return isinstance(raw_source, Union[str, DataFrameLikeT])
 
     @override
     @classmethod
     def _resolve(cls, raw_source: Any) -> GetMLDatasetSource:
-        if isinstance(raw_source, DataFrameLike):
+        if isinstance(raw_source, DataFrameLikeT):
             return cls.from_dataframe_like(raw_source)
         if isinstance(raw_source, str):
             if raw_source.endswith(".parquet"):

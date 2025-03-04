@@ -11,7 +11,7 @@ from mlflow.entities import DatasetInput, InputTag, Run
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
 from getml_mlflow.data import dataframelike, getml_dataset
-from getml_mlflow.data.dataframelike import DataFrameLike
+from getml_mlflow.data.dataframelike import DataFrameLike, DataFrameLikeT
 
 
 class DataContainerLoggerTarget(str, Enum):
@@ -111,7 +111,7 @@ class DataContainerLogger:
     ) -> None:
         if isinstance(context, str):
             context = [context]
-        if isinstance(data_container, DataFrameLike):
+        if isinstance(data_container, DataFrameLikeT):
             self._log_dataframe_like(data_container, context)
         elif isinstance(data_container, Subset):
             self._log_subset(data_container, context)
