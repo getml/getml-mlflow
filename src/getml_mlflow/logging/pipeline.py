@@ -149,16 +149,16 @@ class PipelineLogger:
         scores: Scores = self._pipeline.scores
 
         if self._pipeline.is_classification:
-            metrics.extend(self._serialize_metric("auc", scores.auc, 2))
-            metrics.extend(self._serialize_metric("accuracy", scores.accuracy, 2))
+            metrics.extend(self._serialize_metric("auc", scores.auc))
+            metrics.extend(self._serialize_metric("accuracy", scores.accuracy))
             metrics.extend(
-                self._serialize_metric("cross_entropy", scores.cross_entropy, 4)
+                self._serialize_metric("cross_entropy", scores.cross_entropy)
             )
 
         if self._pipeline.is_regression:
             metrics.extend(self._serialize_metric("mae", scores.mae))
             metrics.extend(self._serialize_metric("rmse", scores.rmse))
-            metrics.extend(self._serialize_metric("rsquared", scores.rsquared, 2))
+            metrics.extend(self._serialize_metric("rsquared", scores.rsquared))
 
         self._mlflow_client.log_batch(run_id=self._run_id, metrics=metrics)
 
@@ -202,15 +202,13 @@ class PipelineLogger:
 
         self._mlflow_client.log_param(self._run_id, "targets", self._pipeline.targets)
 
-    def _serialize_metric(
-        self, name: str, values: float | List[float], ndigits: Optional[int] = None
-    ) -> List[Metric]:
+    def _serialize_metric(self, name: str, values: float | List[float]) -> List[Metric]:
         timestamp: int = get_current_time_millis()
         if isinstance(values, list):
             return [
                 Metric(
                     key=f"name.{id}",
-                    value=self.maybe_round(value, ndigits),
+                    value=value,
                     timestamp=timestamp,
                     step=0,
                 )
@@ -219,12 +217,8 @@ class PipelineLogger:
         return [
             Metric(
                 key=name,
-                value=self.maybe_round(values, ndigits),
+                value=values,
                 timestamp=timestamp,
                 step=0,
             )
         ]
-
-    @staticmethod
-    def maybe_round(value: float, ndigits: Optional[int]) -> float:
-        return value if ndigits is None else round(value, ndigits)
