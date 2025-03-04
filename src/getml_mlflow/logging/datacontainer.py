@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Dict, List, Sequence, Union
-
-    from mlflow import MlflowClient
-    from mlflow.entities import Run
-
 from enum import StrEnum
 from functools import cached_property
 from tempfile import TemporaryDirectory
+from typing import Dict, List, Sequence, Union
 
 from getml.data import Subset
-from mlflow.entities import DatasetInput, InputTag
+from mlflow import MlflowClient
+from mlflow.entities import DatasetInput, InputTag, Run
 from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 
 from getml_mlflow.data import dataframelike, getml_dataset

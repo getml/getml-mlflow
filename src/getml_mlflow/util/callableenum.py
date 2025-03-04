@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Generic, Type, TypeVar, cast
-
-if TYPE_CHECKING:
-    from typing import Dict
-
 from enum import Enum, auto
+from typing import Any, Callable, Dict, Generic, Type, TypeVar, cast
 
 CallableType = TypeVar("CallableType", bound=Callable[..., Any])
 

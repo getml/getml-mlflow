@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-    from mlflow import MlflowClient
-    from numpy.typing import NDArray
-
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 import numpy
+from mlflow import MlflowClient
+from numpy.typing import NDArray
 
 
 class NumpyLogger:

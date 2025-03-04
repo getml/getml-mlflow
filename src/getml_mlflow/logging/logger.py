@@ -1,17 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from logging import Logger
-    from types import TracebackType
-    from typing import Optional, Type
-
-    from mlflow import MlflowClient
-
 import logging
 import logging.config
 from datetime import datetime, timezone
+from logging import Logger
+from types import TracebackType
+from typing import Optional, Type
+
+from mlflow import MlflowClient
 
 logger: Logger = logging.getLogger(__name__)
 

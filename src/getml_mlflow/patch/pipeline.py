@@ -1,26 +1,20 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from types import TracebackType
-    from typing import Callable, Dict, Optional, Sequence, Type, Union
-
-    from getml.data import Subset
-    from getml.pipeline import Pipeline, Scores
-    from mlflow import MlflowClient
-
-    from getml_mlflow.data.dataframelike import DataFrameLike
+from types import TracebackType
+from typing import Callable, Dict, Optional, Sequence, Type, Union
 
 import getml
 import mlflow
 import mlflow.entities
 import numpy
-from getml.data import DataFrame
+from getml.data import DataFrame, Subset
+from getml.pipeline import Pipeline, Scores
+from mlflow import MlflowClient
 from mlflow.entities import Param, RunStatus, RunTag
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
 from numpy.typing import NDArray
 
+from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.logging.numpy import NumpyLogger

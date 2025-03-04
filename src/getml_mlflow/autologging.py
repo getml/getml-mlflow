@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Optional
-
 import functools
+from typing import Any, Callable, Dict, Optional
 
 import getml
 import mlflow

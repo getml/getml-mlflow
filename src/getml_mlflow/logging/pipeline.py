@@ -1,18 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal
-
-if TYPE_CHECKING:
-    from types import TracebackType
-    from typing import Dict, List, Optional, Type, Union
-
-    from getml.pipeline import Scores
-    from mlflow import MlflowClient
-
 import json
 from dataclasses import fields, is_dataclass
+from types import TracebackType
+from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
 
-from getml.pipeline import Pipeline
+from getml.pipeline import Pipeline, Scores
+from mlflow import MlflowClient
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
 

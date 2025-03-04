@@ -1,24 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
-
-if TYPE_CHECKING:
-    from logging import Logger
-    from types import TracebackType
-    from typing import List, Optional, Type
-
-    from mlflow import MlflowClient
-    from requests import Response
-
 import logging
 from collections import namedtuple
+from logging import Logger
 from threading import Event, Thread
+from types import TracebackType
+from typing import Callable, List, Optional, Type
 
 import mlflow.utils.time
 import numpy
 import requests
 from getml.constants import ENTERPRISE_DOCS_URL
+from mlflow import MlflowClient
 from mlflow.entities import Metric
+from requests import Response
 from requests.exceptions import RequestException
 
 from getml_mlflow.logging.logger import log_exit_exception, log_request_exception

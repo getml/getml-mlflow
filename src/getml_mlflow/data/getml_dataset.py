@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hashlib import _Hash
-    from typing import Any, Dict, Iterable, List, Optional, Union
-
-    from getml.data.roles.container import Roles
-    from getml.data.roles.types import Role
-
 import hashlib
 import json
 from datetime import datetime, timezone
+from hashlib import _Hash
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import getml
 import mlflow
@@ -21,6 +14,8 @@ import mlflow.data.dataset_source
 import mlflow.entities.dataset
 import mlflow.types
 from getml.data import DataFrame
+from getml.data.roles.container import Roles
+from getml.data.roles.types import Role
 from mlflow.data.dataset_source import DatasetSource
 from mlflow.types.schema import ColSpec, DataType, Schema
 from typing_extensions import override
