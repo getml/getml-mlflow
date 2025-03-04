@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import Enum
 from functools import cached_property
 from tempfile import TemporaryDirectory
 from typing import Dict, List, Sequence, Union
@@ -14,7 +14,7 @@ from getml_mlflow.data import dataframelike, getml_dataset
 from getml_mlflow.data.dataframelike import DataFrameLike
 
 
-class DataContainerLoggerTarget(StrEnum):
+class DataContainerLoggerTarget(str, Enum):
     ARTIFACT = "artifact"
     INPUT = "input"
 
