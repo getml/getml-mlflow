@@ -7,9 +7,8 @@ if TYPE_CHECKING:
 
 import hashlib
 import json
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, Optional, Union
 
 import getml
 import mlflow
@@ -135,21 +134,7 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
 
     @override
     def _compute_digest(self) -> str:
-        # TODO: Get unique identifier from dataframe_like
-        dataframe_like_information: List[str] = [
-            dataframelike.get_name(self._dataframe_like),
-            str(self._dataframe_like.ncols()),
-            str(self._dataframe_like.nrows()),
-        ] + self._dataframe_like.colnames
-        dataframe_like_hash: _Hash = hashlib.md5()
-        for info in dataframe_like_information:
-            dataframe_like_hash.update(info.encode())
-
-        # Add current time to hash to make it unique as we don't have a unique identifier for the whole dataframe_like
-        # A unique digest for a dataset is necessary as it will just be stored once in the backend
-        # TODO: Add dataset_source information
-        now_hash: _Hash = hashlib.md5(datetime.now(timezone.utc).isoformat().encode())
-        return f"{dataframe_like_hash.hexdigest()[:8]}-{now_hash.hexdigest()[:8]}"
+        return hashlib.md5(json.dumps(self._as_base_dict()).encode()).hexdigest()[:8]
 
     @override
     def to_dict(self) -> Dict[str, str]:
@@ -166,16 +151,24 @@ class GetMLDataset(mlflow.data.dataset.Dataset):
         )
         return result
 
-    def as_dict(self) -> Dict[str, Any]:
+    def _as_base_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
-            "digest": self.digest,
             "source": self.source.to_dict(),
             "source_type": self.source._get_source_type(),
             "schema": self.schema.to_dict() if self.schema else None,
             "profile": self.profile,
             "roles": self._roles,
         }
+
+    def as_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = self._as_base_dict()
+        result.update(
+            {
+                "digest": self.digest,
+            }
+        )
+        return result
 
     @property
     @override
