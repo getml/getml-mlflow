@@ -1,27 +1,39 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Dict, Optional
+from typing import Callable, Dict, Optional, TypeVar
 
 import getml
 import mlflow
 from mlflow import MlflowClient
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
+from typing_extensions import ParamSpec
 
 import getml_mlflow.logging.logger
 from getml_mlflow.flavor import FLAVOR_NAME
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 from getml_mlflow.patch import engine, pipeline
 
+CallableArgsTypes = ParamSpec("CallableArgsTypes")
+CallableReturnType = TypeVar("CallableReturnType")
+
 
 def with_logging_configuration(
     logging_configuration: LoggingConfiguration,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+) -> Callable[
+    [Callable[CallableArgsTypes, CallableReturnType]],
+    Callable[CallableArgsTypes, CallableReturnType],
+]:
+    def decorator(
+        func: Callable[CallableArgsTypes, CallableReturnType],
+    ) -> Callable[CallableArgsTypes, CallableReturnType]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
-            return func(*args, **kwargs, logging_configuration=logging_configuration)
+        def wrapper(
+            *args: CallableArgsTypes.args, **kwargs: CallableArgsTypes.kwargs
+        ) -> CallableReturnType:
+            kwargs["logging_configuration"] = logging_configuration
+            return func(*args, **kwargs)
 
         return wrapper
 
