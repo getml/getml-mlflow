@@ -1,17 +1,35 @@
 from __future__ import annotations
 
 import json
-from dataclasses import fields, is_dataclass
+from dataclasses import is_dataclass
 from types import TracebackType
-from typing import Any, Callable, Dict, List, Literal, Optional, Type, Union
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Type,
+    Union,
+    runtime_checkable,
+)
 
 from getml.pipeline import Pipeline, Scores
 from mlflow import MlflowClient
 from mlflow.entities import Metric, Param, RunTag
 from mlflow.utils.time import get_current_time_millis
+from pydantic import TypeAdapter
 
 from getml_mlflow.logging.logger import log_exit_exception
 from getml_mlflow.util.callableenum import CallableEnumFactory
+
+
+@runtime_checkable
+class DataclassInstance(Protocol):
+    __dataclass_fields__: ClassVar[Dict[str, Any]]
+
 
 PipelineParameter = CallableEnumFactory[Callable[[Pipeline], Any]].build(
     "PipelineParameter",
@@ -87,37 +105,43 @@ class PipelineLogger:
         for pipeline_parameter in PipelineParameter:
             parameter: Any = pipeline_parameter.value(self._pipeline)
             parameter_name: str = pipeline_parameter.name.lower()
-            if is_dataclass(type(parameter)):
-                parameters.extend(self._serialize_dataclass(parameter_name, parameter))
-            elif isinstance(parameter, list):
+            if isinstance(parameter, list):
+                assert all(map(is_dataclass, parameter))
                 for id, item in enumerate(parameter):
                     parameters.extend(
                         self._serialize_dataclass(f"{parameter_name}.{id}", item)
                     )
-            elif isinstance(parameter, (str, int, float, bool, Literal)):
-                parameters.append(Param(parameter_name, str(parameter)))
             else:
                 parameters.append(Param(parameter_name, str(parameter)))
 
         self._mlflow_client.log_batch(run_id=self._run_id, params=parameters)
 
-    def _serialize_dataclass(self, name: str, parameter: Any) -> List[Param]:
-        parameters: List[Param] = []
+    def _serialize_dataclass(
+        self, name: str, parameter: DataclassInstance
+    ) -> List[Param]:
+        current_name: str = f"{name}.{type(parameter).__name__}"
+        return self._to_param_list(
+            current_name,
+            self._flatten_parameters(
+                TypeAdapter(type(parameter)).dump_python(parameter)
+            ),
+        )
 
-        current_name: str = type(parameter).__name__
-        for field in fields(parameter):
-            full_field_name: str = f"{name}.{current_name}.{field.name}"
-            field_value: Any = getattr(parameter, field.name)
-            if is_dataclass(field.type):
-                parameters.extend(
-                    self._serialize_dataclass(full_field_name, field_value)
-                )
+    def _flatten_parameters(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        flattened_parameters: Dict[str, Any] = {}
+        for key, value in parameters.items():
+            if isinstance(value, dict):
+                for sub_key, sub_value in self._flatten_parameters(value).items():
+                    flattened_parameters[f"{key}.{sub_key}"] = sub_value
             else:
-                parameters.append(
-                    Param(full_field_name, self._serialize_field_value(field_value))
-                )
+                flattened_parameters[key] = value
+        return flattened_parameters
 
-        return parameters
+    def _to_param_list(self, name: str, parameters: Dict[str, Any]) -> List[Param]:
+        return [
+            Param(f"{name}.{key}", self._serialize_field_value(value))
+            for key, value in parameters.items()
+        ]
 
     def _serialize_field_value(self, field_value: Any) -> str:
         if isinstance(field_value, (frozenset, set)):
