@@ -126,28 +126,53 @@ def autolog(
     getml_project_path: Optional[str] = None,
     tracking_uri: Optional[str] = None,
 ) -> None:
-    """Enable automatic logging of getML pipelines to MLflow.
+    """Enable automatic logging of getML operations to MLflow.
 
-    This function enables automatic logging of getML pipelines and their methods
-    (fit, score, predict, transform) to MLflow. When enabled, pipeline parameters,
-    performance metrics, dataframes metadata, and other relevant information are captured
-    and displayed in the MLflow UI.
+    This function enables automatic logging of the following operations to MLflow:
 
-    getML pipelines are what MLflow calls runs. getML projects corresponds to MLflow's
-    experiments.
+    - pipeline creation, loading and operations (fit, score, predict, transform)
+    - project setting and switching .
+
+    Pipeline parameters, performance metrics, dataframe metadata, and other relevant
+    information are captured and displayed in the MLflow UI. It also allows logging of
+    dataframes passed as a function parameter or returned by a function as artifacts.
+
+    In the UI, getML pipelines correspond to MLflow runs while getML projects
+    correspond to MLflow experiments.
 
     Args:
         log_data_container_information (bool, optional): Whether to log metadata about
-            dataframes which are part of getML containers (e.g., size, column names, roles).
+            dataframes in a `Container` (e.g., number of rows & columns,
+            column names, roles).
 
-        log_data_container_as_artifact (bool, optional): Whether to save data containers
-            as MLflow artifacts.
+            The [`roles`][getml.data.roles] are indicated with the
+            following emojis in the MLflow UI:
+
+            - 🗃 for categorical columns
+            - 🔗 for join keys
+            - 🔢 for numerical columns
+            - 🎯 for target column(s)
+            - 📝 for text columns
+            - ⏰ for time stamps
+            - 🧮 for unused float columns
+            - 🧵 for unused string columns
+
+        log_data_container_as_artifact (bool, optional): Whether to log a `DataFrame`,
+            `View` or `Subset` function parameter as a `.parquet` artifact in `mlartifacts`
+            directory. In addition, it allows logging of `DataFrame` returned by functions.
+            In MLflow UI, the artifacts are available to download. `log_function_parameters`
+            or `log_function_return` must be `True` for this to work.
 
         log_function_parameters (bool, optional): Whether to log parameters passed to
-            getML functions.
+            getML functions, e.g., pipe.fit() in the MLflow UI. To log the `DataFrame`,
+            `View` or `Subset` function parameters as artifacts,
+            `log_data_container_as_artifact=True` must also be set to `True`.
 
         log_function_return (bool, optional): Whether to log return values of getML
-            functions.
+            functions as artifacts. For example, it enables logging of `DataFrame`
+            (as `.parquet`) and `numpy.ndarray` (as `.npy`) returned by `transform()`
+            or `predict()` methods. `log_data_container_as_artifact` must also be `True`
+            for `DataFrame` logging.
 
         log_function_as_trace (bool, optional): Whether to log function calls as MLflow
             traces for detailed execution flow.
@@ -167,7 +192,8 @@ def autolog(
         log_pipeline_columns (bool, optional): Whether to log [`columns`][getml.pipeline.Columns]
             (whose importance can be calculated) of a pipeline.
 
-        log_pipeline_targets (bool, optional): Whether to log Pipeline [`targets`][getml.pipeline.Pipeline.targets].
+        log_pipeline_targets (bool, optional): Whether to log
+            [`targets`][getml.pipeline.Pipeline.targets] of a pipeline.
 
         log_pipeline_data_model (bool, optional): Whether to log the
             [`data model`][getml.data.DataModel] provided in the pipeline. It is available
@@ -182,8 +208,16 @@ def autolog(
 
         silent (bool, optional): If True, suppresses all logging messages.
 
-        create_runs (bool, optional): If True, creates new MLflow runs when logging.
-            If False, uses the active run.
+        create_runs (bool, optional): If True, creates new MLflow runs automatically
+            when logging. You may set it to False and log under your own run. For example:
+
+            ```
+            import mlflow
+            mlflow.set_tracking_uri("http://localhost:5000")
+            mlflow.set_experiment("your_experiment_name")
+            with mlflow.start_run(run_name="your_run_name"):
+                pipe.fit(container.train)
+            ```
 
         extra_tags (Dict[str, str], optional): Additional custom tags to log with each MLflow run.
 
@@ -194,39 +228,21 @@ def autolog(
         tracking_uri (str, optional): MLflow tracking server URI. If not provided,
             uses `http://localhost:5000`.
 
-    Notes:
-        The [`roles`][getml.data.roles] of DataFrame columns are indicated with the
-        following emojis in the MLflow UI:
-
-          - 🗃 for categorical columns
-          - 🔗 for join keys
-          - 🔢 for numerical columns
-          - 🎯 for target column(s)
-          - 📝 for text columns
-          - ⏰ for time stamps
-          - 🧮 for unused float columns
-          - 🧵 for unused string columns
-
-        When autologging is enabled, the following getML operations are tracked:
-
-          - Pipeline creation, loading, and operations (fit, score, predict, transform)
-          - Project setting and switching
-
     Examples:
         Basic usage with default settings:
 
-            >>> import getml
-            >>> import getml_mlflow
-            >>> getml_mlflow.autolog()
-            >>> # All subsequent getML operations will be logged to MLflow
+            import getml
+            import getml_mlflow
+            getml_mlflow.autolog()
+            # Subsequent getML pipeline operations will be logged to MLflow
 
         Custom configuration:
 
-            >>> getml_mlflow.autolog(
-            ...     log_pipeline_as_artifact=True,
-            ...     log_system_metrics=False,
-            ...     tracking_uri="http://localhost:5000"
-            ... )
+            getml_mlflow.autolog(
+                log_pipeline_as_artifact=True,
+                log_system_metrics=False,
+                tracking_uri="http://localhost:5000"
+            )
     """
     if disable:
         revert_patches(FLAVOR_NAME)
