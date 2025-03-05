@@ -1,24 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Sequence, Union
-
-if TYPE_CHECKING:
-    from inspect import BoundArguments
-    from logging import Logger
-    from typing import Any, Callable, Optional, OrderedDict
-
-    from mlflow import MlflowClient
-    from mlflow.entities import Run, Span
-
 import inspect
 import logging
 from functools import cached_property, wraps
+from inspect import BoundArguments
+from logging import Logger
+from typing import Any, Callable, Dict, Optional, OrderedDict, Sequence, Union
 
 import numpy
 from getml import Pipeline
 from getml.data import DataFrame, Subset
 from getml.pipeline import Scores
-from mlflow.entities import Param
+from mlflow import MlflowClient
+from mlflow.entities import Param, Run, Span
 from mlflow.tracing.constant import TraceMetadataKey
 from mlflow.tracing.trace_manager import InMemoryTraceManager
 

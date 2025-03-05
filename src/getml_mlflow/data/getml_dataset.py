@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from functools import cached_property
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from hashlib import _Hash
-
 import hashlib
 import json
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Dict, Iterable, Optional, Union
 
 import getml
-from getml.data import DataFrame
+from getml.data import DataFrame, Roles
+from getml.data.roles.types import Role
 from mlflow.data.dataset import Dataset
 from mlflow.data.dataset_source import DatasetSource
 from mlflow.types.schema import ColSpec, DataType, Schema

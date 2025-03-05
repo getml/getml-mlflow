@@ -1,18 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Optional, Tuple
-
-    from getml.pipeline import Pipeline
-    from mlflow.client import MlflowClient
-
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Optional, Tuple
 
 import getml
+from getml.pipeline import Pipeline
+from mlflow.client import MlflowClient
 
 from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 
