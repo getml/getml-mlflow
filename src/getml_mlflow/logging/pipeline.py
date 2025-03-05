@@ -231,7 +231,7 @@ class PipelineLogger:
         if isinstance(values, list):
             return [
                 Metric(
-                    key=f"name.{id}",
+                    key=f"{name}.{id}",
                     value=value,
                     timestamp=timestamp,
                     step=0,
