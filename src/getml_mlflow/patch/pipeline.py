@@ -16,6 +16,7 @@ from mlflow.entities import RunStatus, RunTag
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID, MLFLOW_USER
 from numpy.typing import NDArray
 
+from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 from getml_mlflow.data.dataframelike import DataFrameLike
 from getml_mlflow.logging.function import FunctionLogger
 from getml_mlflow.logging.logger import log_exit_exception
@@ -196,6 +197,8 @@ def fit(
             run.id,
             pipeline,
             logging_configuration=logging_configuration.pipeline,
+            getml_project_path=logging_configuration.general.getml_project_path
+            or DEFAULT_GETML_PROJECTS_PATH,
         )
         pipeline_logger.log_constructor_arguments()
 
@@ -213,6 +216,8 @@ def fit(
             fit_run.id,
             pipeline,
             logging_configuration=logging_configuration.pipeline,
+            getml_project_path=logging_configuration.general.getml_project_path
+            or DEFAULT_GETML_PROJECTS_PATH,
         ):
             with SystemMetricsLogger(
                 mlflow_client,
@@ -274,6 +279,8 @@ def score(
             score_run.id,
             pipeline,
             logging_configuration=logging_configuration.pipeline,
+            getml_project_path=logging_configuration.general.getml_project_path
+            or DEFAULT_GETML_PROJECTS_PATH,
         ):
             score_output: Scores = FunctionLogger(
                 mlflow_client,
@@ -315,6 +322,8 @@ def predict(
             run_id=predict_run.id,
             pipeline=pipeline,
             logging_configuration=logging_configuration.pipeline,
+            getml_project_path=logging_configuration.general.getml_project_path
+            or DEFAULT_GETML_PROJECTS_PATH,
         ):
             predict_output: Union[NDArray[numpy.float_], None] = FunctionLogger(
                 mlflow_client,
@@ -359,6 +368,8 @@ def transform(
             transform_run.id,
             pipeline,
             logging_configuration=logging_configuration.pipeline,
+            getml_project_path=logging_configuration.general.getml_project_path
+            or DEFAULT_GETML_PROJECTS_PATH,
         ):
             transform_output: Union[DataFrame, NDArray[numpy.float_], None] = (
                 FunctionLogger(

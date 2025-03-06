@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Dict, Optional
 
 from mlflow import MlflowClient
@@ -38,7 +39,7 @@ class GeneralLoggingConfiguration:
     silent: bool = False
     create_runs: bool = True
     extra_tags: Optional[Dict[str, str]] = None
-    getml_project_path: Optional[str] = None
+    getml_project_path: Optional[Path] = None
 
 
 @dataclass

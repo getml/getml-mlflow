@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import getml
@@ -111,7 +112,7 @@ def autolog(
     silent: bool = False,
     create_runs: bool = True,
     extra_tags: Optional[Dict[str, str]] = None,
-    getml_project_path: Optional[str] = None,
+    getml_project_path: Optional[Path] = None,
     tracking_uri: Optional[str] = None,
 ) -> None:
     if disable:
