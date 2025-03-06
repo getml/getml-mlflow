@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import functools
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from typing import Any, Dict, List, Optional
 
 import getml
 import mlflow
 from mlflow import MlflowClient
 from mlflow.utils.autologging_utils import autologging_integration
 from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
-from typing_extensions import ParamSpec
 
 from getml_mlflow.constants import DEFAULT_MLFLOW_TRACKING_URI
 from getml_mlflow.flavor import FLAVOR_NAME
@@ -84,30 +82,6 @@ FUNCTIONS_TO_PATCH: List[SafePatchFunction] = [
         patch_function=pipeline.transform,
     ),
 ]
-
-CallableArgsTypes = ParamSpec("CallableArgsTypes")
-CallableReturnType = TypeVar("CallableReturnType")
-
-
-def with_logging_configuration(
-    logging_configuration: LoggingConfiguration,
-) -> Callable[
-    [Callable[CallableArgsTypes, CallableReturnType]],
-    Callable[CallableArgsTypes, CallableReturnType],
-]:
-    def decorator(
-        func: Callable[CallableArgsTypes, CallableReturnType],
-    ) -> Callable[CallableArgsTypes, CallableReturnType]:
-        @functools.wraps(func)
-        def wrapper(
-            *args: CallableArgsTypes.args, **kwargs: CallableArgsTypes.kwargs
-        ) -> CallableReturnType:
-            kwargs["logging_configuration"] = logging_configuration
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
 
 
 @autologging_integration(FLAVOR_NAME)

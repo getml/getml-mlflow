@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
+
+from typing_extensions import ParamSpec
+
+CallableArgsTypes = ParamSpec("CallableArgsTypes")
+CallableReturnType = TypeVar("CallableReturnType")
 
 
 def with_kwargs(
     **extra_kwargs: Any,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+) -> Callable[
+    [Callable[CallableArgsTypes, CallableReturnType]],
+    Callable[CallableArgsTypes, CallableReturnType],
+]:
+    def decorator(
+        func: Callable[CallableArgsTypes, CallableReturnType],
+    ) -> Callable[CallableArgsTypes, CallableReturnType]:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs) -> Any:
+        def wrapper(
+            *args: CallableArgsTypes.args, **kwargs: CallableArgsTypes.kwargs
+        ) -> CallableReturnType:
             kwargs.update(extra_kwargs)
             return func(*args, **kwargs)
 
