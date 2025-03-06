@@ -14,9 +14,9 @@ def set_project(
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
     mlflow_client: MlflowClient = logging_configuration.mlflow_client
-    set_project_method: Callable = original
+    set_project_function: Callable = original
 
-    set_project_method(name)
+    set_project_function(name)
 
     if not mlflow_client.search_experiments(filter_string=f"name='{name}'"):
         mlflow_client.create_experiment(name=name)

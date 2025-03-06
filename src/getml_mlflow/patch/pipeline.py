@@ -142,9 +142,9 @@ def load(
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> Pipeline:
     mlflow_client: MlflowClient = logging_configuration.mlflow_client
-    load_method: Callable = original
+    load_function: Callable = original
 
-    load_output: Pipeline = load_method(name)
+    load_output: Pipeline = load_function(name)
 
     with Run(
         mlflow_client=mlflow_client,
