@@ -13,7 +13,7 @@ from mlflow.utils.mlflow_tags import MLFLOW_DATASET_CONTEXT
 from getml_mlflow.data import dataframelike
 from getml_mlflow.data.dataframelike import DataFrameLike, DataFrameLikeT
 from getml_mlflow.data.getml_dataset import GetMLDataset
-from getml_mlflow.loggingconfiguration import LoggingConfiguration
+from getml_mlflow.loggingconfiguration import DataContainerLoggingConfiguration
 
 
 class DataContainerLoggerTarget(str, Enum):
@@ -28,7 +28,7 @@ class DataContainerLogger:
         mlflow_client: MlflowClient,
         run_id: str,
         *,
-        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
+        logging_configuration: DataContainerLoggingConfiguration = DataContainerLoggingConfiguration(),
     ) -> DataContainerLogger:
         return cls(
             mlflow_client,
@@ -43,7 +43,7 @@ class DataContainerLogger:
         mlflow_client: MlflowClient,
         run_id: str,
         *,
-        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
+        logging_configuration: DataContainerLoggingConfiguration = DataContainerLoggingConfiguration(),
     ) -> DataContainerLogger:
         return cls(
             mlflow_client,
@@ -58,13 +58,13 @@ class DataContainerLogger:
         run_id: str,
         target: DataContainerLoggerTarget,
         *,
-        logging_configuration: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
+        logging_configuration: DataContainerLoggingConfiguration = DataContainerLoggingConfiguration(),
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
         self._run: Run = self._mlflow_client.get_run(run_id)
         self._target: DataContainerLoggerTarget = target
-        self._logging_configuration: LoggingConfiguration.DataContainer = (
+        self._logging_configuration: DataContainerLoggingConfiguration = (
             logging_configuration
         )
 

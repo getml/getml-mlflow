@@ -20,7 +20,10 @@ from typing_extensions import ParamSpec
 from getml_mlflow.data.dataframelike import DataFrameLikeT
 from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.numpy import NumpyLogger
-from getml_mlflow.loggingconfiguration import LoggingConfiguration
+from getml_mlflow.loggingconfiguration import (
+    DataContainerLoggingConfiguration,
+    FunctionLoggingConfiguration,
+)
 
 logger: Logger = logging.getLogger(__name__)
 
@@ -35,16 +38,16 @@ class FunctionLogger:
         run: Run,
         pipeline: Pipeline,
         *,
-        logging_configuration_function: LoggingConfiguration.Function = LoggingConfiguration.Function(),
-        logging_configuration_data_container: LoggingConfiguration.DataContainer = LoggingConfiguration.DataContainer(),
+        function_logging_configuration: FunctionLoggingConfiguration = FunctionLoggingConfiguration(),
+        data_container_logging_configuration: DataContainerLoggingConfiguration = DataContainerLoggingConfiguration(),
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run: Run = run
         self._pipeline: Pipeline = pipeline
-        self._logging_configuration_function: LoggingConfiguration.Function = (
-            logging_configuration_function
+        self._function_logging_configuration: FunctionLoggingConfiguration = (
+            function_logging_configuration
         )
-        self._logging_configuration_data_container: LoggingConfiguration.DataContainer = logging_configuration_data_container
+        self._data_container_logging_configuration: DataContainerLoggingConfiguration = data_container_logging_configuration
 
     def log(
         self, function: Callable[CallableArgsTypes, CallableReturnType]
@@ -72,7 +75,7 @@ class FunctionLogger:
         return wrapper
 
     def log_parameters(self, arguments: OrderedDict[str, Any]) -> None:
-        if not self._logging_configuration_function.log_parameters:
+        if not self._function_logging_configuration.log_parameters:
             return
 
         parameters: Dict[str, Any] = {}
@@ -113,7 +116,7 @@ class FunctionLogger:
         return DataContainerLogger.as_input(
             self._mlflow_client,
             self._run.info.run_id,
-            logging_configuration=self._logging_configuration_data_container,
+            logging_configuration=self._data_container_logging_configuration,
         )
 
     @cached_property
@@ -121,7 +124,7 @@ class FunctionLogger:
         return DataContainerLogger.as_artifact(
             self._mlflow_client,
             self._run.info.run_id,
-            logging_configuration=self._logging_configuration_data_container,
+            logging_configuration=self._data_container_logging_configuration,
         )
 
     @cached_property
@@ -129,7 +132,7 @@ class FunctionLogger:
         return NumpyLogger(self._mlflow_client, self._run.info.run_id)
 
     def log_return(self, output: Any) -> None:
-        if not self._logging_configuration_function.log_return or output is None:
+        if not self._function_logging_configuration.log_return or output is None:
             return
 
         if isinstance(output, DataFrame):
@@ -152,7 +155,7 @@ class FunctionLogger:
     def log_trace_start(
         self, function_name: str, arguments: OrderedDict[str, Any]
     ) -> Optional[Span]:
-        if not self._logging_configuration_function.log_as_trace:
+        if not self._function_logging_configuration.log_as_trace:
             return None
 
         span: Span = self._mlflow_client.start_trace(
@@ -176,7 +179,7 @@ class FunctionLogger:
         return span
 
     def log_trace_end(self, span: Optional[Span], output: Any) -> None:
-        if not self._logging_configuration_function.log_as_trace or span is None:
+        if not self._function_logging_configuration.log_as_trace or span is None:
             return
 
         self._mlflow_client.end_trace(

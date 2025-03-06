@@ -25,7 +25,7 @@ from pydantic import TypeAdapter
 
 from getml_mlflow.constants import DEFAULT_GETML_PROJECTS_PATH
 from getml_mlflow.logging.logger import log_exit_exception
-from getml_mlflow.loggingconfiguration import LoggingConfiguration
+from getml_mlflow.loggingconfiguration import PipelineLoggingConfiguration
 from getml_mlflow.marshalling.pipeline import log_pipeline_as_artifact
 from getml_mlflow.util.callableenum import CallableEnumFactory
 
@@ -56,13 +56,13 @@ class PipelineLogger:
         run_id: str,
         pipeline: Pipeline,
         *,
-        logging_configuration: LoggingConfiguration.Pipeline = LoggingConfiguration.Pipeline(),
+        logging_configuration: PipelineLoggingConfiguration = PipelineLoggingConfiguration(),
         getml_project_path: Path = DEFAULT_GETML_PROJECTS_PATH,
     ) -> None:
         self._mlflow_client: MlflowClient = mlflow_client
         self._run_id: str = run_id
         self._pipeline: Pipeline = pipeline
-        self._logging_configuration: LoggingConfiguration.Pipeline = (
+        self._logging_configuration: PipelineLoggingConfiguration = (
             logging_configuration
         )
         self._getml_project_path: Path = getml_project_path

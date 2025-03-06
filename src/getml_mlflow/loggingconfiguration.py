@@ -7,36 +7,51 @@ from mlflow import MlflowClient
 
 
 @dataclass
-class LoggingConfiguration:
-    @dataclass
-    class DataContainer:
-        log_information: bool = True
-        log_as_artifact: bool = True
+class DataContainerLoggingConfiguration:
+    log_information: bool = True
+    log_as_artifact: bool = True
 
-    @dataclass
-    class Function:
-        log_parameters: bool = True
-        log_return: bool = True
-        log_as_trace: bool = True
 
-    @dataclass
-    class Pipeline:
-        log_parameters: bool = True
-        log_tags: bool = True
-        log_scores: bool = True
-        log_features: bool = True
-        log_columns: bool = True
-        log_targets: bool = True
-        log_data_model: bool = True
-        log_as_artifact: bool = True
+@dataclass
+class FunctionLoggingConfiguration:
+    log_parameters: bool = True
+    log_return: bool = True
+    log_as_trace: bool = True
 
+
+@dataclass
+class PipelineLoggingConfiguration:
+    log_parameters: bool = True
+    log_tags: bool = True
+    log_scores: bool = True
+    log_features: bool = True
+    log_columns: bool = True
+    log_targets: bool = True
+    log_data_model: bool = True
+    log_as_artifact: bool = True
+
+
+@dataclass
+class GeneralLoggingConfiguration:
     mlflow_client: MlflowClient = field(default_factory=MlflowClient)
-    data_container: DataContainer = field(default_factory=DataContainer)
-    function: Function = field(default_factory=Function)
-    pipeline: Pipeline = field(default_factory=Pipeline)
-
     log_system_metrics: bool = True
     silent: bool = False
     create_runs: bool = True
     extra_tags: Optional[Dict[str, str]] = None
     getml_project_path: Optional[str] = None
+
+
+@dataclass
+class LoggingConfiguration:
+    general: GeneralLoggingConfiguration = field(
+        default_factory=GeneralLoggingConfiguration
+    )
+    data_container: DataContainerLoggingConfiguration = field(
+        default_factory=DataContainerLoggingConfiguration
+    )
+    function: FunctionLoggingConfiguration = field(
+        default_factory=FunctionLoggingConfiguration
+    )
+    pipeline: PipelineLoggingConfiguration = field(
+        default_factory=PipelineLoggingConfiguration
+    )

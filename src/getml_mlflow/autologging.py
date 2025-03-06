@@ -11,7 +11,13 @@ from mlflow.utils.autologging_utils.safety import revert_patches, safe_patch
 
 from getml_mlflow.constants import DEFAULT_MLFLOW_TRACKING_URI
 from getml_mlflow.flavor import FLAVOR_NAME
-from getml_mlflow.loggingconfiguration import LoggingConfiguration
+from getml_mlflow.loggingconfiguration import (
+    DataContainerLoggingConfiguration,
+    FunctionLoggingConfiguration,
+    GeneralLoggingConfiguration,
+    LoggingConfiguration,
+    PipelineLoggingConfiguration,
+)
 from getml_mlflow.patch import engine, pipeline, project
 from getml_mlflow.util.with_kwargs import with_kwargs
 
@@ -116,17 +122,24 @@ def autolog(
     mlflow.set_tracking_uri(tracking_uri)
 
     logging_configuration: LoggingConfiguration = LoggingConfiguration(
-        mlflow_client=MlflowClient(tracking_uri=tracking_uri),
-        data_container=LoggingConfiguration.DataContainer(
+        general=GeneralLoggingConfiguration(
+            mlflow_client=MlflowClient(tracking_uri=tracking_uri),
+            log_system_metrics=log_system_metrics,
+            silent=silent,
+            create_runs=create_runs,
+            extra_tags=extra_tags,
+            getml_project_path=getml_project_path,
+        ),
+        data_container=DataContainerLoggingConfiguration(
             log_information=log_data_container_information,
             log_as_artifact=log_data_container_as_artifact,
         ),
-        function=LoggingConfiguration.Function(
+        function=FunctionLoggingConfiguration(
             log_parameters=log_function_parameters,
             log_return=log_function_return,
             log_as_trace=log_function_as_trace,
         ),
-        pipeline=LoggingConfiguration.Pipeline(
+        pipeline=PipelineLoggingConfiguration(
             log_parameters=log_pipeline_parameters,
             log_tags=log_pipeline_tags,
             log_scores=log_pipeline_scores,
@@ -136,11 +149,6 @@ def autolog(
             log_data_model=log_pipeline_data_model,
             log_as_artifact=log_pipeline_as_artifact,
         ),
-        log_system_metrics=log_system_metrics,
-        silent=silent,
-        create_runs=create_runs,
-        extra_tags=extra_tags,
-        getml_project_path=getml_project_path,
     )
 
     for function in FUNCTIONS_TO_PATCH:

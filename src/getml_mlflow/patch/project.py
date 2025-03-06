@@ -13,7 +13,7 @@ def switch(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
-    mlflow_client: MlflowClient = logging_configuration.mlflow_client
+    mlflow_client: MlflowClient = logging_configuration.general.mlflow_client
     switch_function: Callable = original
 
     switch_function(name)

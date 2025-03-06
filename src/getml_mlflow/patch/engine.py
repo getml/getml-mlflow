@@ -13,7 +13,7 @@ def set_project(
     *,
     logging_configuration: LoggingConfiguration = LoggingConfiguration(),
 ) -> None:
-    mlflow_client: MlflowClient = logging_configuration.mlflow_client
+    mlflow_client: MlflowClient = logging_configuration.general.mlflow_client
     set_project_function: Callable = original
 
     set_project_function(name)
