@@ -14,7 +14,7 @@ $ uv pip install "git+ssh://git@github.com/getml/getml-mlflow.git"
 
 Run the mlflow server with its browser UI.
 ```bash
-$ uv run mlflow ui -h 0.0.0.0 --dev
+$ uv run mlflow ui
 ```
 
 Open the mlflow UI in your browser.
