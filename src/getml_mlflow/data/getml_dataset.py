@@ -63,7 +63,7 @@ class GetMLDatasetSource(DatasetSource):
     @override
     @staticmethod
     def _can_resolve(raw_source: Any) -> bool:
-        return isinstance(raw_source, Union[str, DataFrameLikeT])
+        return isinstance(raw_source, (str, DataFrameLikeT))
 
     @override
     @classmethod

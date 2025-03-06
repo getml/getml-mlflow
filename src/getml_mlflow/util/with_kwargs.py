@@ -16,14 +16,14 @@ def with_kwargs(
     Callable[CallableArgsTypes, CallableReturnType],
 ]:
     def decorator(
-        func: Callable[CallableArgsTypes, CallableReturnType],
+        function: Callable[CallableArgsTypes, CallableReturnType],
     ) -> Callable[CallableArgsTypes, CallableReturnType]:
-        @functools.wraps(func)
+        @functools.wraps(function)
         def wrapper(
             *args: CallableArgsTypes.args, **kwargs: CallableArgsTypes.kwargs
         ) -> CallableReturnType:
             kwargs.update(extra_kwargs)
-            return func(*args, **kwargs)
+            return function(*args, **kwargs)
 
         return wrapper
 

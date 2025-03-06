@@ -5,7 +5,7 @@ import logging
 from functools import cached_property, wraps
 from inspect import BoundArguments
 from logging import Logger
-from typing import Any, Callable, Dict, Optional, OrderedDict, Sequence, Union
+from typing import Any, Callable, Dict, Optional, OrderedDict, Sequence, TypeVar
 
 import numpy
 from getml import Pipeline
@@ -15,13 +15,17 @@ from mlflow import MlflowClient
 from mlflow.entities import Param, Run, Span
 from mlflow.tracing.constant import TraceMetadataKey
 from mlflow.tracing.trace_manager import InMemoryTraceManager
+from typing_extensions import ParamSpec
 
-from getml_mlflow.data.dataframelike import DataFrameLike
+from getml_mlflow.data.dataframelike import DataFrameLikeT
 from getml_mlflow.logging.datacontainer import DataContainerLogger
 from getml_mlflow.logging.numpy import NumpyLogger
 from getml_mlflow.loggingconfiguration import LoggingConfiguration
 
 logger: Logger = logging.getLogger(__name__)
+
+CallableArgsTypes = ParamSpec("CallableArgsTypes")
+CallableReturnType = TypeVar("CallableReturnType")
 
 
 class FunctionLogger:
@@ -42,19 +46,23 @@ class FunctionLogger:
         )
         self._logging_configuration_data_container: LoggingConfiguration.DataContainer = logging_configuration_data_container
 
-    def log(self, function: Callable[..., Any]) -> Callable[..., Any]:
+    def log(
+        self, function: Callable[CallableArgsTypes, CallableReturnType]
+    ) -> Callable[CallableArgsTypes, CallableReturnType]:
         @wraps(function)
-        def wrapper(*args, **kwargs) -> Any:
+        def wrapper(
+            *args: CallableArgsTypes.args, **kwargs: CallableArgsTypes.kwargs
+        ) -> CallableReturnType:
             bound_arguments: BoundArguments = inspect.signature(function).bind(
                 *args, **kwargs
             )
             bound_arguments.apply_defaults()
             arguments: OrderedDict[str, Any] = bound_arguments.arguments
 
-            span: Optional[Span] = self.log_trace_start(function, arguments)
+            span: Optional[Span] = self.log_trace_start(function.__name__, arguments)
             self.log_parameters(arguments)
 
-            output: Any = function(*args, **kwargs)
+            output: CallableReturnType = function(*args, **kwargs)
 
             self.log_return(output)
             self.log_trace_end(span, output)
@@ -73,19 +81,19 @@ class FunctionLogger:
             if argument_name == "self":
                 # Don't log self.
                 pass
-            elif isinstance(argument_value, Union[DataFrameLike, Subset]):
+            elif isinstance(argument_value, (DataFrameLikeT, Subset)):
                 self._input_data_container_logger.log_data_container(
                     argument_value, [argument_name]
                 )
             elif (
                 isinstance(argument_value, Sequence)
                 and all(
-                    isinstance(element, DataFrameLike) for element in argument_value
+                    isinstance(element, DataFrameLikeT) for element in argument_value
                 )
             ) or (
                 isinstance(argument_value, Dict)
                 and all(
-                    isinstance(element, DataFrameLike)
+                    isinstance(element, DataFrameLikeT)
                     for element in argument_value.values()
                 )
             ):
@@ -135,20 +143,20 @@ class FunctionLogger:
                 name="output",
                 artifact_path="output",
             )
-        elif isinstance(output, Union[Pipeline, Scores]):
+        elif isinstance(output, (Pipeline, Scores)):
             # Return values of type Pipeline and Scores are not logged.
             pass
         else:
             logger.info("Missing return logging for type '%s'", type(output))
 
     def log_trace_start(
-        self, function: Callable[..., Any], arguments: OrderedDict[str, Any]
+        self, function_name: str, arguments: OrderedDict[str, Any]
     ) -> Optional[Span]:
         if not self._logging_configuration_function.log_as_trace:
             return None
 
         span: Span = self._mlflow_client.start_trace(
-            function.__name__,
+            function_name,
             inputs=arguments,
             experiment_id=self._run.info.experiment_id,
             attributes={
