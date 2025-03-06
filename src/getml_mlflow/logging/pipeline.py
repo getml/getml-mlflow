@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import is_dataclass
 from pathlib import Path
 from types import TracebackType
@@ -119,12 +120,19 @@ class PipelineLogger:
     def _serialize_dataclass(
         self, name: str, parameter: DataclassInstance
     ) -> List[Param]:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                category=UserWarning,
+                module="pydantic",
+            )
+            parameter_as_dict: Dict[str, Any] = TypeAdapter(
+                type(parameter)
+            ).dump_python(parameter)
         current_name: str = f"{name}.{type(parameter).__name__}"
         return self._to_param_list(
             current_name,
-            self._flatten_parameters(
-                TypeAdapter(type(parameter)).dump_python(parameter)
-            ),
+            self._flatten_parameters(parameter_as_dict),
         )
 
     def _flatten_parameters(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
