@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
@@ -62,7 +61,7 @@ def download_artifact_pipeline(
         new_project_name: str = f"{original_project_name}-{pipeline_id}"
         project_path: Path = projects_path / new_project_name
         temp_project_path: Path = Path(temp_dir) / "pipeline" / original_project_name
-        shutil.move(temp_project_path, project_path)
+        temp_project_path.rename(project_path)
 
     return (new_project_name, pipeline_id)
 
