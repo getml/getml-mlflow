@@ -247,9 +247,10 @@ def autolog(
 
         extra_tags (Dict[str, str], optional): Additional custom tags to log with each MLflow run.
 
-        getml_project_path (str, optional): Path to the getML project. Pipeline
-            artifact is stored here when `log_pipeline_as_artifact=True`. If not provided,
-            `$HOME/.getML/projects` is used.
+        getml_project_path (Path, optional): Path to the getML projects directory.
+            Used for accessing and logging pipeline artifacts when
+            `log_pipeline_as_artifact=True`. If not provided, defaults to
+            `$HOME/.getML/projects`.
 
         tracking_uri (str, optional): MLflow tracking server URI. If not provided,
             uses `http://localhost:5000`.
