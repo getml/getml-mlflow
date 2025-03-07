@@ -255,6 +255,13 @@ def autolog(
         tracking_uri (str, optional): MLflow tracking server URI. If not provided,
             uses `http://localhost:5000`.
 
+    Installation:
+        You can install getml-mlflow using pip:
+
+        ```
+        pip install getml-mlflow
+        ```
+
     Examples:
         Basic usage with default settings:
 
