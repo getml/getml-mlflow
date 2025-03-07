@@ -188,7 +188,44 @@ def autolog(
             [`data model`][getml.data.DataModel] provided in the pipeline. It is available
             as an HTML artifact to view or download.
 
-        log_pipeline_as_artifact (bool, optional): Whether to save pipelines as MLflow artifacts.
+        log_pipeline_as_artifact (bool, optional): Whether to save pipelines as
+            MLflow artifacts inside `mlartifacts` directory.
+
+            You can then use `getml_mlflow.marshalling.pipeline.download_artifact_pipeline()`
+            to download the artifact pipeline into a new getML project. The new project
+            will be created with name "old_project_name-pipeline_name", e.g.
+            "interstate94-l2TCiD", containing the pipeline "l2TCiD". The new project
+            name and pipeline ID will be returned.
+
+            You can also switch to the new project directly with
+            `getml_mlflow.marshalling.pipeline.switch_to_artifact_pipeline()`. This will
+            download the artifact pipeline into a new getML project and switch to it.
+            The artifact pipeline will be loaded and returned.
+
+            To use this parameter when running getML Engine in a docker container, you
+            will have to create a bind mount from the host into the container to let
+            `getml_mlflow` access the pipeline and log it. In case
+            of [`docker-compose.yml`][engine-install], you can specify the bind mount under `getml`
+            service:
+
+            ```
+            volumes:
+                - $HOME/.getML:/home/getml
+            ```
+
+            and remove the existing named volume:
+
+            ```
+            ...
+                volumes:
+                - getml:/home/getml/
+            volumes:
+            getml:
+                external: false
+            ```
+
+            If you have mounted a directory other than `$HOME/.getML` from the host,
+            you will have to specify it with `getml_project_path` parameter.
 
         log_system_metrics (bool, optional): Whether to log system metrics (CPU, memory usage)
             during pipeline fitting. Metrics are available for getML Enterprise only.
