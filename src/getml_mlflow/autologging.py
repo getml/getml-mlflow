@@ -94,8 +94,8 @@ FUNCTIONS_TO_PATCH: List[SafePatchFunction] = [
 @autologging_integration(FLAVOR_NAME)
 def autolog(
     *,
-    log_data_container_information: bool = True,
-    log_data_container_as_artifact: bool = True,
+    log_data_information: bool = True,
+    log_data_as_artifact: bool = True,
     log_function_parameters: bool = True,
     log_function_return: bool = True,
     log_function_as_trace: bool = True,
@@ -133,15 +133,14 @@ def autolog(
     In the UI, getML pipelines correspond to MLflow runs, functions correspond to
     sub-runs, and projects correspond to experiments.
 
-    For a detailed introduction on this MLflow integration, including setup, working with 
-    artifact pipelines, and more, please refer to our 
-    [Tracking with MLflow][mlflow-integration-guide] guide. The guide provides examples 
+    For a detailed introduction on this MLflow integration, including setup, working with
+    artifact pipelines, and more, please refer to our
+    [Tracking with MLflow][mlflow-integration-guide] guide. The guide provides examples
     and configuration options to help you get the most from it.
 
     Args:
-        log_data_container_information (bool, optional): Whether to log metadata about
-            dataframes in a `Container` (e.g., number of rows & columns,
-            column names, roles).
+        log_data_information (bool, optional): Whether to log metadata about
+            a `Dataframe` or `View` (e.g., number of rows & columns, column names, roles).
 
             The [`roles`][getml.data.roles] are indicated with the
             following emojis in the MLflow UI:
@@ -155,7 +154,7 @@ def autolog(
             - 🧮 for unused float columns
             - 🧵 for unused string columns
 
-        log_data_container_as_artifact (bool, optional): Whether to log a `DataFrame`,
+        log_data_as_artifact (bool, optional): Whether to log a `DataFrame`,
             `View` or `Subset` function parameter as a `.parquet` artifact. In addition,
             it allows logging of `DataFrame` returned by functions. In MLflow UI, the
             artifacts are available to download. `log_function_parameters` or
@@ -164,12 +163,12 @@ def autolog(
         log_function_parameters (bool, optional): Whether to log parameters passed to
             getML functions, e.g., pipe.fit() in the MLflow UI. To log the `DataFrame`,
             `View` or `Subset` function parameters as artifacts,
-            `log_data_container_as_artifact=True` must also be set to `True`.
+            `log_data_as_artifact=True` must also be set to `True`.
 
         log_function_return (bool, optional): Whether to log return values of getML
             functions as artifacts. For example, it enables logging of `DataFrame`
             (as `.parquet`) and `numpy.ndarray` (as `.npy`) returned by `transform()`
-            or `predict()` methods. `log_data_container_as_artifact` must also be `True`
+            or `predict()` methods. `log_data_as_artifact` must also be `True`
             for `DataFrame` logging.
 
         log_function_as_trace (bool, optional): Whether to log function calls as MLflow
@@ -240,18 +239,21 @@ def autolog(
     Examples:
         Basic usage with default settings:
 
-            import getml
-            import getml_mlflow
-            getml_mlflow.autolog()
-            # Subsequent getML pipeline operations will be logged to MLflow
+        ```python
+        import getml
+        import getml_mlflow
+        getml_mlflow.autolog()
+        # Subsequent getML pipeline operations will be logged to MLflow
+        ```
 
         Custom configuration:
-
-            getml_mlflow.autolog(
-                log_pipeline_as_artifact=True,
-                log_system_metrics=False,
-                tracking_uri="http://localhost:5000"
-            )
+        ```python
+        getml_mlflow.autolog(
+            log_pipeline_as_artifact=True,
+            log_system_metrics=False,
+            tracking_uri="http://localhost:5000"
+        )
+        ```
     """
     if disable:
         revert_patches(FLAVOR_NAME)
@@ -270,8 +272,8 @@ def autolog(
             getml_project_path=getml_project_path,
         ),
         data_container=DataContainerLoggingConfiguration(
-            log_information=log_data_container_information,
-            log_as_artifact=log_data_container_as_artifact,
+            log_information=log_data_information,
+            log_as_artifact=log_data_as_artifact,
         ),
         function=FunctionLoggingConfiguration(
             log_parameters=log_function_parameters,
