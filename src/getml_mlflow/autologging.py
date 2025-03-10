@@ -120,14 +120,23 @@ def autolog(
     This function enables automatic logging of the following operations to MLflow:
 
     - pipeline creation, loading and operations (fit, score, predict, transform)
-    - project setting and switching .
+    - project setting and switching.
 
     Pipeline parameters, performance metrics, dataframe metadata, and other relevant
     information are captured and displayed in the MLflow UI. It also allows logging of
     dataframes passed as a function parameter or returned by a function as artifacts.
 
-    In the UI, getML pipelines correspond to MLflow runs while getML projects
-    correspond to MLflow experiments.
+    The artifacts are stored in `artifacts-destination` set when running
+    `mlflow ui` command. The default is `artifacts` directory in the current
+    working directory.
+
+    In the UI, getML pipelines correspond to MLflow runs, functions correspond to
+    sub-runs, and projects correspond to experiments.
+
+    For a detailed introduction on this MLflow integration, including setup, working with 
+    artifact pipelines, and more, please refer to our 
+    [Tracking with MLflow][mlflow-integration-guide] guide. The guide provides examples 
+    and configuration options to help you get the most from it.
 
     Args:
         log_data_container_information (bool, optional): Whether to log metadata about
@@ -142,15 +151,15 @@ def autolog(
             - 🔢 for numerical columns
             - 🎯 for target column(s)
             - 📝 for text columns
-            - ⏰ for time stamps
+            - ⏰ for timestamp columns
             - 🧮 for unused float columns
             - 🧵 for unused string columns
 
         log_data_container_as_artifact (bool, optional): Whether to log a `DataFrame`,
-            `View` or `Subset` function parameter as a `.parquet` artifact in `mlartifacts`
-            directory. In addition, it allows logging of `DataFrame` returned by functions.
-            In MLflow UI, the artifacts are available to download. `log_function_parameters`
-            or `log_function_return` must be `True` for this to work.
+            `View` or `Subset` function parameter as a `.parquet` artifact. In addition,
+            it allows logging of `DataFrame` returned by functions. In MLflow UI, the
+            artifacts are available to download. `log_function_parameters` or
+            `log_function_return` must be `True` for this to work.
 
         log_function_parameters (bool, optional): Whether to log parameters passed to
             getML functions, e.g., pipe.fit() in the MLflow UI. To log the `DataFrame`,
@@ -189,50 +198,22 @@ def autolog(
             as an HTML artifact to view or download.
 
         log_pipeline_as_artifact (bool, optional): Whether to save pipelines as
-            MLflow artifacts inside `mlartifacts` directory.
+            MLflow artifacts.
 
-            You can then use `getml_mlflow.marshalling.pipeline.download_artifact_pipeline()`
-            to download the artifact pipeline into a new getML project. The new project
-            will be created with name "old_project_name-pipeline_name", e.g.
-            "interstate94-l2TCiD", containing the pipeline "l2TCiD". The new project
-            name and pipeline ID will be returned.
+            ??? note "Docker configuration, `download_artifact_pipeline()` and `switch_to_artifact_pipeline()`"
 
-            You can also switch to the new project directly with
-            `getml_mlflow.marshalling.pipeline.switch_to_artifact_pipeline()`. This will
-            download the artifact pipeline into a new getML project and switch to it.
-            The artifact pipeline will be loaded and returned.
-
-            To use this parameter when running getML Engine in a docker container, you
-            will have to create a bind mount from the host into the container to let
-            `getml_mlflow` access the pipeline and log it. In case
-            of [`docker-compose.yml`][engine-install], you can specify the bind mount under `getml`
-            service:
-
-            ```
-            volumes:
-                - $HOME/.getML:/home/getml
-            ```
-
-            and remove the existing named volume:
-
-            ```
-            ...
-                volumes:
-                - getml:/home/getml/
-            volumes:
-            getml:
-                external: false
-            ```
-
-            If you have mounted a directory other than `$HOME/.getML` from the host,
-            you will have to specify it with `getml_project_path` parameter.
+                When using this parameter with Docker, you'll need to set up proper bind
+                mounts to allow pipeline artifact logging. For detailed instructions on
+                working with artifact pipelines, Docker configurations, and related
+                functions like `download_artifact_pipeline()` and `switch_to_artifact_pipeline()`,
+                please refer to the [Tracking with MLflow][mlflow-integration-guide] guide.
 
         log_system_metrics (bool, optional): Whether to log system metrics (CPU, memory usage)
             during pipeline fitting. Metrics are available for getML Enterprise only.
 
         disable (bool, optional): If True, disables all getML autologging.
 
-        silent (bool, optional): If True, suppresses all logging messages.
+        silent (bool, optional): If True, suppresses all informational logging messages.
 
         create_runs (bool, optional): If True, creates new MLflow runs automatically
             when logging. You may set it to False and log under your own run. For example:
@@ -255,12 +236,6 @@ def autolog(
         tracking_uri (str, optional): MLflow tracking server URI. If not provided,
             uses `http://localhost:5000`.
 
-    Installation:
-        You can install getml-mlflow using pip:
-
-        ```
-        pip install getml-mlflow
-        ```
 
     Examples:
         Basic usage with default settings:
