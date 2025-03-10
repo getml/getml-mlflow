@@ -51,6 +51,55 @@ def download_artifact_pipeline(
     original_project_name: Optional[str] = None,
     projects_path: Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> Tuple[str, str]:
+    """
+    Downloads a getML pipeline artifact from an MLflow run and saves it as a new project.
+
+    This function downloads a pipeline artifact from MLflow and creates a new project with
+    a name derived from the original project name and the pipeline ID: 
+    "original_project_name-pipeline_id".
+
+    ??? warning "Experimental feature"
+        This feature is experimental and may change in future releases.
+
+    Args:
+        mlflow_client: An MLflow client instance to interact with MLflow.
+
+        run_id: The ID of the MLflow run containing the pipeline artifacts.
+
+        pipeline_id: The ID of the pipeline to be downloaded.
+
+        original_project_name: The name of the original getML project the pipeline was 
+            saved from. If None, uses the current project name.
+
+        projects_path: Path where getML projects are stored. Defaults to 
+            `$HOME/.getML/projects`.
+
+    Returns:
+        A tuple containing:
+            - The name of the newly created getML project
+            - The ID of the downloaded pipeline
+
+    Example:
+        ```python
+        # Initialize MLflow client
+        client = MlflowClient(tracking_uri="http://localhost:5000")
+
+        run_id = "abcdef1234567890"
+        pipeline_id = "l2TCiD"
+
+        # Download pipeline artifact from a specific run. This creates a new project 
+        # named "interstate94-l2TCiD" with the pipeline
+        new_project, pipeline_id = getml_mlflow.marshalling.pipeline.download_artifact_pipeline(
+            client, run_id, pipeline_id, original_project_name="interstate94"
+            )
+
+        # You can now switch to the new project and load the pipeline
+        getml.project.set_name(new_project)
+        pipeline = getml.pipeline.load(pipeline_id)
+        ```
+
+    """
+    
     if original_project_name is None:
         original_project_name = getml.project.name
 
@@ -74,6 +123,56 @@ def switch_to_artifact_pipeline(
     original_project_name: Optional[str] = None,
     projects_path: Path = DEFAULT_GETML_PROJECTS_PATH,
 ) -> Pipeline:
+    """
+    Downloads an artifact pipeline from MLflow, switches to the newly created project,
+    and loads the pipeline.
+
+    This function simplifies the workflow of retrieving a pipeline stored as an MLflow 
+    artifact. It downloads the pipeline into a new getML project (named as 
+    "original_project_name-pipeline_id"), automatically switches to that project, and 
+    loads the pipeline for immediate use.
+
+    ??? warning "Experimental feature"
+        This function is experimental and may change in future releases.
+
+    Args:
+        mlflow_client: The MLflow client instance to use for retrieving the artifact.
+
+        run_id: The ID of the MLflow run containing the pipeline artifact.
+
+        pipeline_id: The ID of the pipeline to download.
+
+        original_project_name: The name of the original project. If None, the current 
+            project name is used. Defaults to None.
+
+        projects_path: Path to the getML projects directory. Defaults to 
+        `$HOME/.getML/projects`.
+
+    Returns:
+        Pipeline: The loaded pipeline object in the newly created project.
+
+    Examples:
+        ```python
+        import mlflow
+        from mlflow.tracking import MlflowClient
+        import getml_mlflow
+        import getml
+        
+        # Connect to MLflow
+        client = MlflowClient("http://localhost:5000")
+        
+        # Download pipeline from run and switch to new project
+        pipeline = getml_mlflow.marshalling.pipeline.switch_to_artifact_pipeline(
+                   client,
+                   "2960ee40202744daa64aa83d180f0b2f",
+                   "uPe3hR"
+                )
+        
+        # Pipeline is ready to use
+        predictions = pipeline.predict(container.test)
+        ```
+
+    """
     if original_project_name is None:
         original_project_name = getml.project.name
 
