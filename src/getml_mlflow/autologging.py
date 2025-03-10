@@ -217,7 +217,7 @@ def autolog(
         create_runs (bool, optional): If True, creates new MLflow runs automatically
             when logging. You may set it to False and log under your own run. For example:
 
-            ```
+            ```python
             import mlflow
             mlflow.set_tracking_uri("http://localhost:5000")
             mlflow.set_experiment("your_experiment_name")
