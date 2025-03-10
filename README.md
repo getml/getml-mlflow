@@ -14,7 +14,7 @@ $ uv pip install "git+ssh://git@github.com/getml/getml-mlflow.git"
 
 Run the mlflow server with its browser UI.
 ```bash
-$ uv run mlflow ui -h 0.0.0.0 --dev
+$ uv run mlflow ui
 ```
 
 Open the mlflow UI in your browser.
@@ -39,7 +39,7 @@ By deleting an experiment in the mlflow UI, the experiment is still preset in th
 Even when deleting the experiment via the mlflow CLI, the experiment is still present in the aether...
 
 ```bash
-$ uv run mlflow  experiments search
+$ uv run mlflow experiments search --view all
 Experiment Id       Name            Artifact Location
 ------------------  --------------  ------------------------------------
 0                   Default         mlflow-artifacts:/0
@@ -54,5 +54,6 @@ Creating another experiment with the same name will result in the following erro
 
 You have to delete the experiment from the aether via
 ```bash
-MLFLOW_TRACKING_URI="http://localhost:5000" uv run mlflow gc
+$ rm -rf mlruns/.trash/888888888888888888/
+$ MLFLOW_TRACKING_URI="http://localhost:5000" uv run mlflow gc
 ```
