@@ -150,7 +150,7 @@ def switch_to_artifact_pipeline(
             project name is used. Defaults to None.
 
         projects_path: Path to the getML projects directory. Defaults to 
-        `$HOME/.getML/projects`.
+            `$HOME/.getML/projects`.
 
     Returns:
         Pipeline: The loaded pipeline object in the newly created project.
