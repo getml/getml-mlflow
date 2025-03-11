@@ -58,6 +58,10 @@ def download_artifact_pipeline(
     a name derived from the original project name and the pipeline ID: 
     "original_project_name-pipeline_id".
 
+    If the project already exists (e.g., when calling this function multiple times with 
+    the same parameters), the existing project will be overwritten with the downloaded 
+    artifacts.
+
     ??? warning "Experimental feature"
         This feature is experimental and may change in future releases.
 
@@ -94,7 +98,7 @@ def download_artifact_pipeline(
             )
 
         # You can now switch to the new project and load the pipeline
-        getml.project.set_name(new_project)
+        getml.project.set_project(new_project)
         pipeline = getml.pipeline.load(pipeline_id)
         ```
 
