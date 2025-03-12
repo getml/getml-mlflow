@@ -7,7 +7,12 @@ Prepare the Python environment.
 $ uv venv
 ```
 
-Install getml-mlflow via pip from branch.
+Install getml-mlflow via pip from pypi.
+```bash
+$ uv pip install getml-mlflow
+```
+
+Install latest getml-mlflow via pip from repository.
 ```bash
 $ uv pip install "git+ssh://git@github.com/getml/getml-mlflow.git"
 ```
@@ -21,6 +26,12 @@ Open the mlflow UI in your browser.
 ```bash
 $ open http://localhost:5000
 ```
+
+### Documentation
+
+See [User Guide](https://getml.com/dev/user_guide/concepts/mlflow_integration/)
+
+See [API Reference](https://getml.com/dev/reference/mlflow/)
 
 ### Log via mlflow
 
