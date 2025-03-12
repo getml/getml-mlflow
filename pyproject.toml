@@ -9,10 +9,39 @@ description = 'Integrate MLflow into getML'
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-keywords = []
-authors = [{ name = "Code17 GmbH", email = "hello@getml.com" }]
+license-files = ["LICENSE"]
+keywords = [
+    "getML",
+    "mlflow",
+    "AutoML",
+    "feature learning",
+    "feature engineering",
+]
+authors = [
+    { name = "Code17 GmbH", email = "hello@code17.io" },
+    { name = "getML", email = "hello@getml.com" },
+]
+maintainers = [
+    { name = "Code17 GmbH", email = "hello@code17.io" },
+    { name = "getML", email = "hello@getml.com" },
+]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Manufacturing",
+    "Intended Audience :: Other Audience",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Telecommunications Industry",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -20,6 +49,14 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Office/Business",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Logging",
+    "Topic :: System :: Monitoring",
 ]
 dependencies = [
     "pyyaml~=6.0",
@@ -27,6 +64,16 @@ dependencies = [
     "getml==1.5.0",
     "typing-extensions>=4.12.2",
 ]
+
+[project.urls]
+"API Reference" = "https://getml.com/dev/reference/mlflow/"
+"User Guide" = "https://getml.com/dev/user_guide/concepts/mlflow_integration/"
+"Repository" = "https://github.com/getml/getml-mlflow"
+"Issues" = "https://github.com/getml/getml-mlflow/issues"
+"getML" = "https://getml.com"
+"Code17 GmbH" = "https://www.code17.io/"
+"MLflow" = "https://mlflow.org/"
+
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
